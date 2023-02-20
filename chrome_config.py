@@ -6,8 +6,6 @@ options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
 options.add_experimental_option("excludeSwitches", ["enable-automation"])
 
-# url = 'https://www.kinopoisk.ru/lists/movies/top250/?page='
-
 
 class Navigator:
     @staticmethod

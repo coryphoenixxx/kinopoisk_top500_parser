@@ -134,12 +134,15 @@ class FindInfoOneFilm:
         self.num_film = num_film
 
     def find_rus_name(self, soup):
-        try:
-            self.film.rus_name = soup.find(
-                class_='styles_title__65Zwx styles_root__l9kHe styles_root__5sqsd styles_rootInDark__SZlor').text
-        except AttributeError:
-            self.film.rus_name = soup.find(
-                class_='styles_title__65Zwx styles_root__l9kHe styles_root__5sqsd styles_rootInLight__juoEZ').text
+        class_ = 'styles_title__65Zwx'
+        self.film.rus_name = soup.find(class_=class_).text
+
+        # try:
+        #     self.film.rus_name = soup.find(
+        #         class_='styles_title__65Zwx styles_root__l9kHe styles_root__5sqsd styles_rootInDark__SZlor').text
+        # except AttributeError:
+        #     self.film.rus_name = soup.find(
+        #         class_='styles_title__65Zwx styles_root__l9kHe styles_root__5sqsd styles_rootInLight__juoEZ').text
 
     def find_orig_name(self, soup):
         try:
@@ -164,20 +167,14 @@ class FindInfoOneFilm:
             print('ошибка find_actors', self.film.orig_name)
 
     def find_country(self, soup):
-        try:
-            self.film.country = [c.strip() for c in
-                                 soup.find_all(class_='styles_rowLight__P8Y_1 styles_row__da_RK')[1].text.replace(
-                                     'Страна',
-                                     '').strip().split(',')]
-        except IndexError:
+        classes = ('styles_rowLight__P8Y_1 styles_row__da_RK', 'styles_rowDark__ucbcz styles_row__da_RK',)
+
+        for class_ in classes:
             try:
                 self.film.country = [c.strip() for c in
-                                     soup.find_all(class_='styles_rowDark__ucbcz styles_row__da_RK')[1].text.replace(
-                                         'Страна',
-                                         '').strip().split(',')]
+                                     soup.find_all(class_=class_)[1].text.replace('Страна', '').strip().split(',')]
             except IndexError:
-                self.film.country = None
-                print('ошибка find_country', self.film.orig_name)
+                continue
 
     def find_genres(self, soup):
         try:
@@ -273,7 +270,7 @@ class FindInfoOneFilm:
         """Сбор информации со страниц"""
         with open(Navigator.get_one_movie_path(self.num_film), 'r', encoding='utf-8') as file:
             src = file.read()
-            soup = BeautifulSoup(src, "html.parser")
+            soup = BeautifulSoup(src, "lxml")
 
         self.find_rus_name(soup)
         self.find_orig_name(soup)
