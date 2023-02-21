@@ -1,9 +1,6 @@
-import json
-
-from chrome_parsing import CopyPageOneFilm, FindFilmsLinks, FindInfoOneFilm
+from chrome_parsing import CopyPageOneFilm, FindFilmsLinks
 from movies_list import movie_lst
-
-from utils import timeit
+from movie_info_extractor import collect_json
 
 
 def start(parsing_links_films=True, parsing_films=True):
@@ -16,23 +13,5 @@ def start(parsing_links_films=True, parsing_films=True):
     pars.copy_html_films(movie_lst)
 
 
-@timeit
-def collect_json():
-    data_json = {}
-    for x in range(1, 251):
-        try:  # TODO: избавиться от try .. except
-            obj_film = FindInfoOneFilm(x)
-            obj_film_json = obj_film.get_json_parsing()
-            data_json[x] = obj_film_json
-        except Exception as err:
-            print(x, err)
-
-    import pprint
-    pprint.pprint(data_json)
-
-    with open('movies_info.json', 'w', encoding="utf-8") as file:
-        json.dump(data_json, file, ensure_ascii=False)
-
-
 if __name__ == '__main__':
-    start()
+    collect_json()

@@ -1,8 +1,7 @@
 from typing import List, Union
-import json
 
 
-class Film:
+class Movie:
     def __init__(self):
         self.rus_name: Union[str, None] = None
         self.orig_name: Union[str, None] = None
@@ -41,4 +40,3 @@ class Film:
                      'trailer': self.trailer,
                      }
         return films_dct
-
