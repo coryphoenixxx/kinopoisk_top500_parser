@@ -12,6 +12,7 @@ from selenium.webdriver.chrome.webdriver import WebDriver
 
 from chrome_config import options
 from utils import Navigator
+from movies_list import movie_lst
 
 """
 Параметр parse_mode в классах FindFilmsLinks и CopyPageOneFilm отвечает за инициализацию WebDriver.
@@ -123,3 +124,11 @@ class CopyPageOneFilm(WebDriverMixin):
 
 
 
+def start(parsing_links_films=True, parsing_films=True):
+    """Проход по основным страницам с фильмами их сохранение и парсинг ссылок на фильмы"""
+    f = FindFilmsLinks(pars_mode=parsing_links_films)
+    links_films = f.get_films_list()
+
+    """Проход по ссылкам конкретных фильмов и сохранение страниц"""
+    pars = CopyPageOneFilm(pars_mode=parsing_films)
+    pars.copy_html_films(movie_lst)

@@ -136,9 +136,6 @@ class MovieInfoExtractor:
     def find_kp_rating(self, soup):
         self.film.kp_rating = soup.find(class_='styles_ratingKpTop__84afd').text
 
-    def find_link(self):
-        self.film.link = movie_lst[self.num_film - 1]
-
     def find_trailer(self, soup):
         self.film.trailer = soup.find('a', class_='styles_title__vd96O').text
 
@@ -162,7 +159,6 @@ class MovieInfoExtractor:
         self.find_short_description(soup)
         self.find_full_description(soup)
         self.find_kp_rating(soup)
-        self.find_link()
 
     def get_json_parsing(self) -> Movie:
         self.parsing_movie_page()
