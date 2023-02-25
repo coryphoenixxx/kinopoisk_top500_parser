@@ -1,29 +1,28 @@
 import time
-from selenium.webdriver import Keys
-
-from selenium.webdriver.support.wait import WebDriverWait
-
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from custom_webriver import WebDriver
-
 from random import randint
 
 from pathos.multiprocessing import ProcessPool
+from selenium.webdriver import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
+
+from config import config
+from custom_webriver import WebDriver
+from utils import timeit
 
 
 class Crawler:
     def __init__(self):
         super().__init__()
         self.base_url = "https://www.kinopoisk.ru/lists/movies/top500/?page={}"
-        self.settings = WebDriver.settings
-        self.proc_nums = WebDriver.proc_nums
 
+    @timeit
     def run(self):
         links = [self.base_url.format(page_num + 1) for page_num in range(10)]
 
-        with ProcessPool(ncpus=self.proc_nums) as pool:
-            results = pool.map(self.job, zip(links, self.settings))
+        with ProcessPool(ncpus=config.proc_nums) as pool:
+            results = pool.map(self.job, zip(links, config.presets))
 
         return results
 
@@ -37,7 +36,7 @@ class Crawler:
         time.sleep(randint(0, 2))
 
         driver.get(link)
-        time.sleep(1)
+        time.sleep(30)
 
         for _ in range(2):
             body = WebDriverWait(driver, 1).until(
@@ -49,5 +48,5 @@ class Crawler:
 
         result = [elem.get_attribute('href') for elem in link_elems]
 
-        driver.close()
+        driver.quit()
         return result
