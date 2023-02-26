@@ -1,8 +1,7 @@
 import time
-from random import randint
 
 from pathos.multiprocessing import ProcessPool
-from selenium.webdriver import Keys
+from selenium.common import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -14,35 +13,50 @@ from utils import timeit
 
 class Crawler:
     def __init__(self):
-        super().__init__()
-        self.base_url = "https://www.kinopoisk.ru/lists/movies/top500/?page={}"
+        self.base_url = "https://www.kinopoisk.ru/"
+        self.movie_list_urls = [f"{self.base_url}/lists/movies/top500/?page={i + 1}" for i in range(10)]
 
-    @timeit
     def run(self):
-        links = [self.base_url.format(page_num + 1) for page_num in range(10)]
-
-        with ProcessPool(ncpus=config.proc_nums) as pool:
-            results = pool.map(self.job, zip(links, config.presets))
-
+        self.catch_captcha()
+        results = self.get_movie_urls()
         return results
 
+    def catch_captcha(self):
+        with ProcessPool(ncpus=config.proc_nums) as pool:
+            pool.map(self.catch_captcha_job, zip([self.base_url] * config.proc_nums, config.presets))
+
+    @timeit
+    def get_movie_urls(self):
+        with ProcessPool(ncpus=config.proc_nums) as pool:
+            return pool.map(self.get_movie_urls_job, zip(self.movie_list_urls, config.presets))
+
     @staticmethod
-    def job(args):
+    def catch_captcha_job(args):
         link, (profile, window) = args
 
-        driver = WebDriver(profile=profile, window_rect=window)
-        driver.show()
+        driver = WebDriver(profile=profile, window_rect=window).get(link)
 
-        time.sleep(randint(0, 2))
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'body')))
 
-        driver.get(link)
-        time.sleep(30)
+        try:
+            driver.find_element(By.CSS_SELECTOR, ".CheckboxCaptcha-Button").click()
+        except NoSuchElementException:
+            pass
 
-        for _ in range(2):
-            body = WebDriverWait(driver, 1).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'body')))
-            body.send_keys(Keys.PAGE_DOWN)
+        while 'showcaptcha' in driver.current_url:
             time.sleep(1)
+
+        driver.quit()
+
+    @staticmethod
+    def get_movie_urls_job(args):
+        link, (profile, window) = args
+
+        driver = WebDriver(profile=profile, window_rect=window).get(link)
+
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'body')))
 
         link_elems = driver.find_elements(By.CSS_SELECTOR, ".base-movie-main-info_link__YwtP1")
 
