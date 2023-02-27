@@ -1,24 +1,41 @@
+import json
 from multiprocessing import Semaphore, Process, Manager
+from pathlib import Path
 
 from selenium.webdriver.common.by import By
 
 from config import config
 from custom_webriver import WebDriver
+from utils import jsonkeystoint
 
 
 class Crawler:
     def __init__(self):
         self.base_url = "https://www.kinopoisk.ru/"
         self.movie_list_urls = [f"{self.base_url}/lists/movies/top500/?page={i + 1}" for i in range(10)]
+        self.movie_urls = None
 
     def run(self):
         return self._get_movie_urls()
 
     def _get_movie_urls(self):
-        return self._run_in_parallel(
-            target=self._get_movie_urls_job,
-            urls=self.movie_list_urls
-        )
+        file = Path().resolve() / 'data/movie_list_urls.json'
+        file.parent.mkdir(parents=True, exist_ok=True)
+
+        if file.exists():
+            with file.open(mode='r', encoding='utf-8') as f:
+                result = json.load(f, object_hook=jsonkeystoint)
+        else:
+            result = self._run_in_parallel(
+                target=self._get_movie_urls_job,
+                urls=self.movie_list_urls
+            )
+
+            with file.open(mode='w', encoding='utf-8') as f:
+                json.dump(result, f, ensure_ascii=False, sort_keys=True, indent=4)
+
+        self.movie_urls = result
+        return self.movie_urls
 
     @staticmethod
     def _get_movie_urls_job(url, presets, semaphore, result: dict):
@@ -57,4 +74,4 @@ class Crawler:
 
             global_result.update(result)
 
-        return dict(sorted(global_result.items()))
+        return global_result

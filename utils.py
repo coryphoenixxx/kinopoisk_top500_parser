@@ -2,6 +2,10 @@ import time
 from functools import wraps
 
 
+def jsonkeystoint(x):
+    return {int(k): v for k, v in x.items()}
+
+
 def timeit(func):
     @wraps(func)
     def timeit_wrapper(*args, **kwargs):
