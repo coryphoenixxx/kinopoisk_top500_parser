@@ -1,5 +1,4 @@
 import os
-from itertools import cycle
 from pathlib import Path
 
 import screeninfo
@@ -23,7 +22,7 @@ class Config:
         cls.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
         profile_dirs = cls.create_profile_dirs(cls.proc_nums)
         windows_rects = cls.calc_windows_rects(cls.proc_nums)
-        cls.presets = cycle(zip(profile_dirs, windows_rects))
+        cls.presets = zip(profile_dirs, windows_rects)
 
     @classmethod
     def create_profile_dirs(cls, procs_num):
@@ -38,7 +37,10 @@ class Config:
     def calc_windows_rects(cls, procs_num):
         monitor = screeninfo.get_monitors()[0]
 
-        if procs_num == 2:
+        if procs_num == 1:
+            return None,
+
+        elif procs_num == 2:
             width, height = int(monitor.width) // 2, (int(monitor.height) - 20)
             return [
                 (0, 0, width, height),
