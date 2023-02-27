@@ -1,4 +1,4 @@
-from multiprocessing import Queue, Semaphore, Process, Manager
+from multiprocessing import Semaphore, Process, Manager
 
 from selenium.webdriver.common.by import By
 
@@ -12,35 +12,49 @@ class Crawler:
         self.movie_list_urls = [f"{self.base_url}/lists/movies/top500/?page={i + 1}" for i in range(10)]
 
     def run(self):
-        return self.get_movie_urls()
+        return self._get_movie_urls()
 
-    def get_movie_urls(self):
+    def _get_movie_urls(self):
+        return self._run_in_parallel(
+            target=self._get_movie_urls_job,
+            urls=self.movie_list_urls
+        )
+
+    @staticmethod
+    def _get_movie_urls_job(url, presets, semaphore, result: dict):
+        with semaphore:
+            with WebDriver(url=url, presets=presets) as driver:
+                movie_blocks = driver.find_elements(By.CSS_SELECTOR, ".styles_root__ti07r")
+
+                d = {}
+                for block in movie_blocks:
+                    position = block.find_element(By.CSS_SELECTOR, ".styles_position__TDe4E") \
+                        .text
+                    url = block.find_element(By.CSS_SELECTOR, ".base-movie-main-info_link__YwtP1") \
+                        .get_attribute('href')
+
+                    d[int(position)] = url
+
+                result.update(d)
+
+    @staticmethod
+    def _run_in_parallel(target, urls):
+        global_result = {}
+        presets = config.presets
+        semaphore = Semaphore(config.proc_nums)
+
         with Manager() as manager:
-            result = manager.list()
-            sem = Semaphore(config.proc_nums)
-
-            presets = Queue()
-            for preset in config.presets:
-                presets.put(preset)
-
+            result = manager.dict()
             processes = []
-            for link in self.movie_list_urls:
-                proc = Process(target=self.get_movie_urls_job, args=(link, presets, sem, result))
+
+            for url in urls:
+                proc = Process(target=target, args=(url, presets, semaphore, result))
                 processes.append(proc)
                 proc.start()
 
             for proc in processes:
                 proc.join()
 
-            print(len(result))
+            global_result.update(result)
 
-    @staticmethod
-    def get_movie_urls_job(link, presets, sem, result):
-        with sem:
-            profile, window = presets.get()
-
-            with WebDriver(link=link, profile=profile, window_rect=window) as driver:
-                link_elems = driver.find_elements(By.CSS_SELECTOR, ".base-movie-main-info_link__YwtP1")
-                result.extend([elem.get_attribute('href') for elem in link_elems])
-
-            presets.put((profile, window))
+        return dict(sorted(global_result.items()))

@@ -5,7 +5,7 @@ from utils import timeit
 @timeit
 def main():
     crawler = Crawler()
-    crawler.run()
+    print(crawler.run())
 
 
 if __name__ == '__main__':
