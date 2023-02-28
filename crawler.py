@@ -1,5 +1,6 @@
 import json
-from multiprocessing import Semaphore, Process, Manager
+import time
+from multiprocessing import Process, Manager
 from pathlib import Path
 
 from selenium.webdriver.common.by import By
@@ -16,10 +17,11 @@ class Crawler:
         self.movie_urls = None
 
     def run(self):
-        return self._get_movie_urls()
+        self._get_movie_urls()
+        self._new_get()
 
     def _get_movie_urls(self):
-        file = Path().resolve() / 'data/movie_list_urls.json'
+        file = Path().resolve() / 'data/movie_urls.json'
         file.parent.mkdir(parents=True, exist_ok=True)
 
         if file.exists():
@@ -28,7 +30,7 @@ class Crawler:
         else:
             result = self._run_in_parallel(
                 target=self._get_movie_urls_job,
-                urls=self.movie_list_urls
+                urls=self.movie_list_urls,
             )
 
             with file.open(mode='w', encoding='utf-8') as f:
@@ -37,10 +39,27 @@ class Crawler:
         self.movie_urls = result
         return self.movie_urls
 
+    def _new_get(self):
+        file = Path().resolve() / 'data/movie_urls.json'
+
+        with file.open(mode='r', encoding='utf-8') as f:
+            movie_urls: dict = json.load(f, object_hook=jsonkeystoint)
+
+        self._run_in_parallel(
+            target=self._new_job,
+            urls=list(movie_urls.values())
+        )
+
     @staticmethod
-    def _get_movie_urls_job(url, presets, semaphore, result: dict):
-        with semaphore:
-            with WebDriver(url=url, presets=presets) as driver:
+    def _new_job(urls_q, presets, result: dict):
+        while not urls_q.empty():
+            with WebDriver(url=urls_q.get(), presets=presets) as driver:
+                time.sleep(100)
+
+    @staticmethod
+    def _get_movie_urls_job(urls_q, presets, result: dict):
+        while not urls_q.empty():
+            with WebDriver(url=urls_q.get(), presets=presets) as driver:
                 movie_blocks = driver.find_elements(By.CSS_SELECTOR, ".styles_root__ti07r")
 
                 d = {}
@@ -58,14 +77,18 @@ class Crawler:
     def _run_in_parallel(target, urls):
         global_result = {}
         presets = config.presets
-        semaphore = Semaphore(config.proc_nums)
 
         with Manager() as manager:
             result = manager.dict()
-            processes = []
+            urls_q = manager.Queue()
 
             for url in urls:
-                proc = Process(target=target, args=(url, presets, semaphore, result))
+                urls_q.put(url)
+
+            processes = []
+
+            for i in range(config.proc_nums):
+                proc = Process(target=target, args=(urls_q, presets, result))
                 processes.append(proc)
                 proc.start()
 

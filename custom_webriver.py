@@ -12,22 +12,37 @@ from config import config
 class WebDriver(webdriver.Chrome):
     def __init__(self, url, presets):
         self.url = url
-        self.profile, self.window_rect = presets.get()
+        self.user_data_dir, self.window_rect = presets.get()
         self.options = webdriver.ChromeOptions()
+
+        # self.options.add_argument('--headless')
+        # self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
+        # self.options.add_argument(f'--user-agent={self.user_agent}')
+        # self.options.add_argument('--disable-extensions')
+        # self.options.add_argument("--no-sandbox")
+        # self.options.add_argument('-–disable-gpu')
+        # self.options.add_argument("--proxy-server='direct://'")
+        # self.options.add_argument("--proxy-bypass-list=*")
+        # self.options.add_argument("--disable-dev-shm-usage")
+        # self.options.add_argument("--remote-debugging-port=9222")
+
         self.options.add_experimental_option('excludeSwitches', ['enable-automation'])
         self.options.add_experimental_option('useAutomationExtension', False)
         self.options.add_argument('--disable-blink-features=AutomationControlled')
-        self.options.add_argument(f'--user-data-dir={self.profile}')
+        self.options.add_argument(f'--user-data-dir={self.user_data_dir}')
+        self.options.add_argument(f'--profile-directory=Default')
+
         self.service = config.service
 
         if not self.window_rect:
+            # self.options.add_argument("window-size=1920,1080")
             self.options.add_argument("--start-maximized")
 
         super().__init__(service=self.service, options=self.options)
 
         self._get(self.url)
 
-        presets.put((self.profile, self.window_rect))
+        presets.put((self.user_data_dir, self.window_rect))
 
     def _get(self, url):
         if self.window_rect:
@@ -35,7 +50,7 @@ class WebDriver(webdriver.Chrome):
 
         super().get(url)
 
-        WebDriverWait(self, 1).until(
+        WebDriverWait(self, 2).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'body')))
 
         try:

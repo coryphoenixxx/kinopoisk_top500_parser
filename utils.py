@@ -1,9 +1,15 @@
 import time
 from functools import wraps
+from itertools import islice
 
 
 def jsonkeystoint(x):
     return {int(k): v for k, v in x.items()}
+
+
+def chunkize(it, size):
+    it = iter(it)
+    return iter(lambda: tuple(islice(it, size)), ())
 
 
 def timeit(func):
