@@ -14,7 +14,7 @@ class Config:
 
         self.proc_nums = int(os.getenv('PROCESS_NUM'))
         self.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
-        self.presets = self._generate_presets()
+        self.presets_queue = self._generate_presets()
 
     def _generate_presets(self):
         presets = Queue()

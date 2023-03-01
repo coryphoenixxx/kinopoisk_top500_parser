@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 from utils import get_file
 
@@ -11,7 +12,7 @@ class Parser:
         pathdir = Path().resolve() / 'data/pages/movie_lists'
         movies_list_pages = sorted(pathdir.iterdir())
 
-        result = self.extract_movie_urls_job(movies_list_pages)
+        result = self._extract_movie_urls_job(movies_list_pages)
 
         json_dict = {}
         file = get_file(filepath='data/movie_urls.json')
@@ -21,9 +22,9 @@ class Parser:
             json.dump(json_dict, f, ensure_ascii=False, sort_keys=True, indent=4)
 
     @staticmethod
-    def extract_movie_urls_job(files):
+    def _extract_movie_urls_job(files):
         result = []
-        for file in files:
+        for file in tqdm(files, desc="Извлечение ссылок на фильмы"):
             with file.open(mode='r', encoding='utf-8') as f:
                 soup = BeautifulSoup(f, "lxml")
 
