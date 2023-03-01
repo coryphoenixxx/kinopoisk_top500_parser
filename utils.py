@@ -1,6 +1,11 @@
 import time
 from functools import wraps
 from itertools import islice
+from multiprocessing import Process, Manager
+from pathlib import Path
+from typing import Iterable
+
+from config import config
 
 
 def jsonkeystoint(x):
@@ -23,3 +28,47 @@ def timeit(func):
         return result
 
     return timeit_wrapper
+
+
+def run_in_parallel(
+        target: callable,
+        tasks: Iterable,
+        get_result: bool = False,
+        webdriver: bool = False
+):
+    global_result = []
+
+    with Manager() as manager:
+        args = []
+
+        tasks_queue = manager.Queue()
+        for task in tasks:
+            tasks_queue.put(task)
+        args.append(tasks_queue)
+
+        if get_result:
+            result = manager.list()
+            args.append(result)
+
+        if webdriver:
+            args.append(config.presets)
+
+        processes = []
+        for _ in range(config.proc_nums):
+            proc = Process(target=target, args=args)
+            processes.append(proc)
+            proc.start()
+
+        for proc in processes:
+            proc.join()
+
+        if get_result:
+            global_result.extend(result)
+
+    return global_result
+
+
+def get_file(filepath):
+    file = Path().resolve() / filepath
+    file.parent.mkdir(parents=True, exist_ok=True)
+    return file

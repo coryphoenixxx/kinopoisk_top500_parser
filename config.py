@@ -12,17 +12,21 @@ class Config:
     def __init__(self):
         load_dotenv()
 
-        self.presets = Queue()
-        self.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
         self.proc_nums = int(os.getenv('PROCESS_NUM'))
+        self.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
+        self.presets = self._generate_presets()
 
-        profile_dirs = self._create_profile_dirs()
+    def _generate_presets(self):
+        presets = Queue()
+        user_data_dirs = self._create_user_data_dirs()
         windows_rects = self._calc_windows_rects()
 
-        for preset in zip(profile_dirs, windows_rects):
-            self.presets.put(preset)
+        for preset in zip(user_data_dirs, windows_rects):
+            presets.put(preset)
 
-    def _create_profile_dirs(self):
+        return presets
+
+    def _create_user_data_dirs(self):
         dirs = []
         for i in range(self.proc_nums):
             path = Path().resolve() / f'profiles/profile_{i + 1}'

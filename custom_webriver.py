@@ -10,9 +10,10 @@ from config import config
 
 
 class WebDriver(webdriver.Chrome):
-    def __init__(self, url, presets):
+    def __init__(self, url, presets, expected_selector=None):
         self.url = url
         self.user_data_dir, self.window_rect = presets.get()
+
         self.options = webdriver.ChromeOptions()
 
         # self.options.add_argument('--headless')
@@ -25,6 +26,7 @@ class WebDriver(webdriver.Chrome):
         # self.options.add_argument("--proxy-bypass-list=*")
         # self.options.add_argument("--disable-dev-shm-usage")
         # self.options.add_argument("--remote-debugging-port=9222")
+        # self.options.add_experimental_option("prefs", {'profile.managed_default_content_settings.javascript': 2})
 
         self.options.add_experimental_option('excludeSwitches', ['enable-automation'])
         self.options.add_experimental_option('useAutomationExtension', False)
@@ -32,25 +34,22 @@ class WebDriver(webdriver.Chrome):
         self.options.add_argument(f'--user-data-dir={self.user_data_dir}')
         self.options.add_argument(f'--profile-directory=Default')
 
-        self.service = config.service
-
         if not self.window_rect:
-            # self.options.add_argument("window-size=1920,1080")
             self.options.add_argument("--start-maximized")
 
-        super().__init__(service=self.service, options=self.options)
+        super().__init__(service=config.service, options=self.options)
 
-        self._get(self.url)
+        self._get(self.url, expected_selector)
 
         presets.put((self.user_data_dir, self.window_rect))
 
-    def _get(self, url):
+    def _get(self, url, expected_selector):
         if self.window_rect:
             self.set_window_rect(*self.window_rect)
 
         super().get(url)
 
-        WebDriverWait(self, 2).until(
+        WebDriverWait(self, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'body')))
 
         try:
@@ -59,3 +58,7 @@ class WebDriver(webdriver.Chrome):
                 time.sleep(0.5)
         except NoSuchElementException:
             pass
+
+        if expected_selector:
+            WebDriverWait(self, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, expected_selector)))
