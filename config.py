@@ -3,33 +3,29 @@ from multiprocessing import Queue
 from pathlib import Path
 
 import screeninfo
-from dotenv import load_dotenv
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 
 class Config:
     def __init__(self):
-        load_dotenv()
-
         self.proc_nums = int(os.getenv('PROCESS_NUM'))
         self.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
-        self.presets_queue = self._generate_presets()
+        self._user_data_dirs = self._create_user_data_dirs()
+        self._windows_rects = self._calc_windows_rects()
+        self._presets_queue = self.presets_queue
 
-    def _generate_presets(self):
+    @property
+    def presets_queue(self):
         presets = Queue()
-        user_data_dirs = self._create_user_data_dirs()
-        windows_rects = self._calc_windows_rects()
-
-        for preset in zip(user_data_dirs, windows_rects):
+        for preset in zip(self._user_data_dirs, self._windows_rects):
             presets.put(preset)
-
         return presets
 
     def _create_user_data_dirs(self):
         dirs = []
         for i in range(self.proc_nums):
-            path = Path().resolve() / f'profiles/profile_{i + 1}'
+            path = Path().resolve() / f'user_datas/user_data_{i + 1}'
             path.mkdir(parents=True, exist_ok=True)
             dirs.append(path)
         return dirs

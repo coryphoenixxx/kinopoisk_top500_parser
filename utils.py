@@ -2,7 +2,7 @@ import time
 from functools import wraps
 from multiprocessing import Process, Manager
 from pathlib import Path
-from typing import Iterable
+from typing import Collection
 
 from tqdm import tqdm
 
@@ -34,7 +34,7 @@ def _update_pbar(q, total, desc):
 
 def run_in_parallel(
         target: callable,
-        tasks: Iterable,
+        tasks: Collection,
         shared_result: bool = False,
         webdriver: bool = False,
         pbar_desc: str = None,
@@ -80,7 +80,7 @@ def run_in_parallel(
     return global_result
 
 
-def get_file(filepath):
-    file = Path().resolve() / filepath
+def get_file(path):
+    file = Path().resolve() / path
     file.parent.mkdir(parents=True, exist_ok=True)
     return file

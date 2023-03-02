@@ -15,7 +15,7 @@ class Parser:
         result = self._extract_movie_urls_job(movies_list_pages)
 
         json_dict = {}
-        file = get_file(filepath='data/movie_urls.json')
+        file = get_file(path='data/movie_urls.json')
 
         with file.open(mode='w', encoding='utf-8') as f:
             json_dict['movies'] = result
