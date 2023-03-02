@@ -32,7 +32,7 @@ def _update_pbar(q, total, desc):
         pbar.update(x)
 
 
-def run_in_parallel(
+def parallel_run(
         target: callable,
         tasks: Collection,
         shared_result: bool = False,

@@ -7,7 +7,7 @@ from selenium.webdriver.common.by import By
 
 from config import config
 from custom_webriver import WebDriver
-from utils import run_in_parallel, get_file
+from utils import parallel_run, get_file
 
 
 class Scraper:
@@ -19,7 +19,7 @@ class Scraper:
         profiles_not_exists = [not (user_data_dir / 'Default').exists() for user_data_dir in user_datas_dir.iterdir()]
 
         if all(profiles_not_exists):
-            run_in_parallel(
+            parallel_run(
                 target=self._solve_capthas_job,
                 tasks=[self.base_url] * config.proc_nums,
                 webdriver=True,
@@ -34,7 +34,7 @@ class Scraper:
         if not file.exists():
             movie_list_urls = [f"{self.base_url}/lists/movies/top500/?page={i + 1}" for i in range(10)]
 
-            run_in_parallel(
+            parallel_run(
                 target=self._download_movie_list_pages_job,
                 tasks=movie_list_urls,
                 webdriver=True,
@@ -49,9 +49,9 @@ class Scraper:
         with file.open(mode='r', encoding='utf-8') as f:
             json_dict: dict = json.load(f)
 
-        movies_urls = [item.values() for item in json_dict['movies']][:50]
+        movies_urls = [item.values() for item in json_dict['movies']]
 
-        run_in_parallel(
+        parallel_run(
             target=self._download_movie_pages_job,
             tasks=movies_urls,
             webdriver=True,

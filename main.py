@@ -15,6 +15,7 @@ def main():
     scraper.download_movie_list_pages()
     parser.extract_movie_urls()
     scraper.download_movie_pages()
+    parser.extract_movies_data()
 
 
 if __name__ == '__main__':
