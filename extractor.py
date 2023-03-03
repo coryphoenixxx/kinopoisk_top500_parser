@@ -6,9 +6,9 @@ from bs4 import BeautifulSoup
 
 class ProxyExtractor:
     def __init__(self, file):
-        self._soup = BeautifulSoup(file, "lxml")
-        self.movie = MovieExtractor(self._soup)
-        self.person = PersonExtractor(self._soup)
+        soup = BeautifulSoup(file, "lxml")
+        self.movie = MovieExtractor(soup)
+        self.person = PersonExtractor(soup)
 
 
 class MovieExtractor:
@@ -18,8 +18,8 @@ class MovieExtractor:
 
     @property
     def urls(self):
-        positions = self._soup.select(selector='.styles_position__TDe4E')
-        urls = self._soup.select(selector='.base-movie-main-info_link__YwtP1')
+        positions = self._soup.select('.styles_position__TDe4E')
+        urls = self._soup.select('.base-movie-main-info_link__YwtP1')
 
         return positions, urls
 
@@ -27,15 +27,16 @@ class MovieExtractor:
     def rus_title(self):
         self._table = self._extract_about_table()  # TODO:
 
-        rus_title = self._soup.select(selector='.styles_title__65Zwx.styles_root__l9kHe.styles_root__5sqsd')[0].text
+        rus_title = self._soup.select('.styles_title__65Zwx.styles_root__l9kHe.styles_root__5sqsd')[0].text
         return rus_title.split('(')[0].strip()
 
     @property
     def orig_title(self):
         try:
-            orig_title = self._soup.select(selector='.styles_originalTitle__JaNKM')[0].text
+            orig_title = self._soup.select('.styles_originalTitle__JaNKM')[0].text
         except IndexError:
             return None
+
         return orig_title.strip()
 
     @property
@@ -66,6 +67,19 @@ class MovieExtractor:
     def writers(self):
         return self._extract_person_number(self._table['Сценарий'])
 
+    @property
+    def actors(self):
+        a_tags = self._soup.select('.styles_actors__wn_C4')[0]
+        return self._extract_person_number(a_tags)
+
+    @property
+    def description(self):
+        return self._soup.select('.styles_paragraph__wEGPz')[0].text.replace('\xa0', ' ')
+
+    @property
+    def poster(self):
+        return 'https:' + self._soup.select('.film-poster')[0].get('src')
+
     def _extract_about_table(self):
         required_fields = ('Год', 'Страна', 'Жанр', 'Слоган', 'Режиссер', 'Сценарий', 'Время')
 
@@ -82,8 +96,8 @@ class MovieExtractor:
         return d
 
     @staticmethod
-    def _extract_person_number(href: bs4.Tag):
-        return re.findall(r'name/(\d+)/', str(href))
+    def _extract_person_number(tag: bs4.Tag):
+        return re.findall(r'name/(\d+)/', str(tag))
 
 
 class PersonExtractor:

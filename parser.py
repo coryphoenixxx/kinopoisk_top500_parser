@@ -1,5 +1,6 @@
 import json
-from pathlib import Path
+from pathlib import Path, WindowsPath
+from pprint import pprint
 
 from tqdm import tqdm
 
@@ -25,11 +26,31 @@ class Parser:
         pathdir = Path().resolve() / 'data/pages/movies'
         movies_pages = sorted(pathdir.iterdir())
 
-        parallel_run(
+        x = parallel_run(
             target=self._extract_movies_data_job,
             tasks=movies_pages,
             pbar_desc="Извлечение информации о фильме",
+            shared_result=True
         )
+
+        pprint(x, width=120)
+
+        genres = []
+        actors = []
+        writers = []
+        directors = []
+        countries = []
+
+        for d in x:
+            genres.extend(d['genres'])
+            actors.extend(d['actors'])
+            writers.extend(d['writers'])
+            writers.extend(d['directors'])
+            countries.extend(d['countries'])
+
+        print(len(set(genres)))
+        print(len(set(countries)))
+        print(len(set(actors + writers + directors)))
 
     @staticmethod
     def _extract_movie_urls_job(files):
@@ -46,21 +67,34 @@ class Parser:
         return result
 
     @staticmethod
-    def _extract_movies_data_job(files_queue, pbar):
+    def _extract_movies_data_job(files_queue, result, pbar):
         while not files_queue.empty():
-            file = files_queue.get()
+            file = get_file(path='data/movie_urls.json')
+
+            with file.open(mode='r', encoding='utf-8') as f:
+                json_dict: dict = json.load(f)
+
+            file: WindowsPath = files_queue.get()
+
+            pos = int(str(file).split('.')[0].split('\\')[-1].split('_')[-1])
 
             with file.open(mode='r', encoding='utf-8') as f:
                 extractor = ProxyExtractor(f)
 
-                print(extractor.movie.rus_title)
-                print(extractor.movie.orig_title)
-                print(extractor.movie.year)
-                print(extractor.movie.countries)
-                print(extractor.movie.duration)
-                print(extractor.movie.tagline)
-                print(extractor.movie.genres)
-                print(extractor.movie.directors)
-                print(extractor.movie.writers)
+                d = {
+                    'rus_title': extractor.movie.rus_title,
+                    'orig_title': extractor.movie.orig_title,
+                    'year': extractor.movie.year,
+                    'countries': extractor.movie.countries,
+                    'duration': extractor.movie.duration,
+                    'tagline': extractor.movie.tagline,
+                    'genres': extractor.movie.genres,
+                    'directors': extractor.movie.directors,
+                    'writers': extractor.movie.writers,
+                    'description': extractor.movie.description,
+                    'actors': extractor.movie.actors,
+                    'poster': extractor.movie.poster,
+                }
 
+                result.append(d)
             pbar.put_nowait(1)

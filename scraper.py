@@ -16,7 +16,10 @@ class Scraper:
 
     def solve_captchas(self):
         user_datas_dir = Path().resolve() / 'user_datas'
-        profiles_not_exists = [not (user_data_dir / 'Default').exists() for user_data_dir in user_datas_dir.iterdir()]
+        profiles_not_exists = [
+            not (user_data_dir / 'Default').exists()
+            for user_data_dir in user_datas_dir.iterdir()
+        ]
 
         if all(profiles_not_exists):
             parallel_run(
@@ -59,45 +62,52 @@ class Scraper:
         )
 
     @staticmethod
-    def _solve_capthas_job(urls_queue, presets, pbar):
-        url = urls_queue.get()
-        with WebDriver(url=url, presets=presets, js=True) as driver:
-            while 'showcaptcha' not in driver.current_url:
-                time.sleep(0.5)
-                driver.refresh()
+    def _solve_capthas_job(urls, presets, pbar):
+        preset = presets.get()
+        url = urls.get()
 
-            try:
-                driver.find_element(By.CSS_SELECTOR, ".CheckboxCaptcha-Button").click()
-            except NoSuchElementException:
-                pass
+        while True:
+            with WebDriver(preset=preset, js=True) as driver:
+                driver.get(url)
 
-            while 'showcaptcha' in driver.current_url:
-                time.sleep(0.5)
+                if 'showcaptcha' not in driver.current_url:
+                    continue
 
-            pbar.put_nowait(1)
+                try:
+                    driver.find_element(By.CSS_SELECTOR, ".CheckboxCaptcha-Button").click()
+                except NoSuchElementException:
+                    pass  # TODO:
+
+                while 'showcaptcha' in driver.current_url:
+                    time.sleep(0.5)
+
+                pbar.put_nowait(1)
+                break
 
     @staticmethod
-    def _download_movie_list_pages_job(urls_queue, presets, pbar):
-        while not urls_queue.empty():
-            url = urls_queue.get()
-            number = int(url.split('page=')[-1])
+    def _download_movie_list_pages_job(urls, presets, pbar):
+        with WebDriver(preset=presets.get()) as driver:
+            while not urls.empty():
+                url = urls.get()
+                driver.get(url, expected_selector='.styles_root__ti07r')
 
-            file = get_file(path=f'data/pages/movie_lists/page_{number:02d}.html')
+                number = int(url.split('page=')[-1])
+                file = get_file(path=f'data/pages/movie_lists/page_{number:02d}.html')
 
-            with WebDriver(url=url, presets=presets, expected_selector='.styles_root__ti07r') as driver:
                 with file.open(mode='w', encoding='utf-8') as f:
                     f.write(driver.page_source)
 
                 pbar.put_nowait(1)
 
     @staticmethod
-    def _download_movie_pages_job(urls_queue, presets, pbar):
-        while not urls_queue.empty():
-            number, url = urls_queue.get()
+    def _download_movie_pages_job(urls, presets, pbar):
+        with WebDriver(preset=presets.get()) as driver:
+            while not urls.empty():
+                number, url = urls.get()
 
-            file = get_file(path=f'data/pages/movies/movie_{number:03d}.html')
+                driver.get(url, expected_selector='.styles_paragraph__wEGPz')
 
-            with WebDriver(url=url, presets=presets, expected_selector='.styles_paragraph__wEGPz') as driver:
+                file = get_file(path=f'data/pages/movies/movie_{number:03d}.html')
                 with file.open(mode='w', encoding='utf-8') as f:
                     f.write(driver.page_source)
 

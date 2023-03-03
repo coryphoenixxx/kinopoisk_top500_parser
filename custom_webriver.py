@@ -7,9 +7,8 @@ from config import config
 
 
 class WebDriver(webdriver.Chrome):
-    def __init__(self, url, presets, expected_selector=None, js=False):
-        self.url = url
-        self.user_data_dir, self.window_rect = presets.get()
+    def __init__(self, preset, js=False):
+        self.user_data_dir, self.window_rect = preset
 
         self.options = webdriver.ChromeOptions()
 
@@ -38,10 +37,9 @@ class WebDriver(webdriver.Chrome):
         #
         # self.options.add_experimental_option("prefs", prefs)
 
+        self.options.add_experimental_option("prefs", {'profile.managed_default_content_settings.javascript': 2})
         if js:
             self.options.add_experimental_option("prefs", {'profile.managed_default_content_settings.javascript': 1})
-        else:
-            self.options.add_experimental_option("prefs", {'profile.managed_default_content_settings.javascript': 2})
 
         self.options.add_experimental_option('excludeSwitches', ['enable-automation'])
         self.options.add_experimental_option('useAutomationExtension', False)
@@ -56,19 +54,13 @@ class WebDriver(webdriver.Chrome):
 
         super().__init__(service=config.service, options=self.options)
 
-        self._get(self.url, expected_selector)
-
-        presets.put((self.user_data_dir, self.window_rect))
-
-    def _get(self, url, expected_selector=None):
         if self.window_rect:
             self.set_window_rect(*self.window_rect)
 
+    def get(self, url, expected_selector='body'):
+
         super().get(url)
 
-        WebDriverWait(self, 5).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'body')))
-
         if expected_selector:
-            WebDriverWait(self, 20).until(
+            WebDriverWait(self, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, expected_selector)))

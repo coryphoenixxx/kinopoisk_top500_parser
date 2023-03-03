@@ -5,13 +5,12 @@ from scraper import Scraper
 from utils import timeit
 
 load_dotenv()
+scraper, parser = Scraper(), Parser()
 
 
 @timeit
 def main():
-    scraper, parser = Scraper(), Parser()
-
-    scraper.solve_captchas()
+    # scraper.solve_captchas()
     scraper.download_movie_list_pages()
     parser.extract_movie_urls()
     scraper.download_movie_pages()
