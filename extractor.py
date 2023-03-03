@@ -15,6 +15,7 @@ class MovieExtractor:
     def __init__(self, soup):
         self._soup = soup
         self._table = None
+        self._rating_section = None
 
     @property
     def urls(self):
@@ -26,6 +27,7 @@ class MovieExtractor:
     @property
     def rus_title(self):
         self._table = self._extract_about_table()  # TODO:
+        self._extract_rating_section()
 
         rus_title = self._soup.select('.styles_title__65Zwx.styles_root__l9kHe.styles_root__5sqsd')[0].text
         return rus_title.split('(')[0].strip()
@@ -79,6 +81,40 @@ class MovieExtractor:
     @property
     def poster(self):
         return 'https:' + self._soup.select('.film-poster')[0].get('src')
+
+    @property
+    def kp_rating(self):
+        return float(self._rating_section.find(class_='film-rating-value').text)
+
+    @property
+    def kp_count(self):
+        return int(re.findall(
+            r'[\d\s]+',
+            self._rating_section.find(class_='styles_count__iOIwD').text
+        )[0].replace(' ', ''))
+
+    @property
+    def imdb_rating(self):
+        try:
+            return float(re.findall(
+                r'([\d.]+)',
+                self._rating_section.find(class_='styles_valueSection__0Tcsy').text
+            )[0])
+        except AttributeError:
+            return None
+
+    @property
+    def imdb_count(self):
+        try:
+            return int(re.findall(
+                r'[\d\s]+',
+                self._rating_section.find(class_='styles_count__89cAz').text
+            )[0].replace(' ', ''))
+        except AttributeError:
+            return None
+
+    def _extract_rating_section(self):
+        self._rating_section = self._soup.find(class_='styles_ratingValue__UO6Zl styles_rootLSize__X4aDt')
 
     def _extract_about_table(self):
         required_fields = ('Год', 'Страна', 'Жанр', 'Слоган', 'Режиссер', 'Сценарий', 'Время')

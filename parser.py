@@ -26,31 +26,14 @@ class Parser:
         pathdir = Path().resolve() / 'data/pages/movies'
         movies_pages = sorted(pathdir.iterdir())
 
-        x = parallel_run(
+        result = parallel_run(
             target=self._extract_movies_data_job,
             tasks=movies_pages,
             pbar_desc="Извлечение информации о фильме",
             shared_result=True
         )
 
-        pprint(x, width=120)
-
-        genres = []
-        actors = []
-        writers = []
-        directors = []
-        countries = []
-
-        for d in x:
-            genres.extend(d['genres'])
-            actors.extend(d['actors'])
-            writers.extend(d['writers'])
-            writers.extend(d['directors'])
-            countries.extend(d['countries'])
-
-        print(len(set(genres)))
-        print(len(set(countries)))
-        print(len(set(actors + writers + directors)))
+        # pprint(result, width=120)
 
     @staticmethod
     def _extract_movie_urls_job(files):
@@ -94,7 +77,14 @@ class Parser:
                     'description': extractor.movie.description,
                     'actors': extractor.movie.actors,
                     'poster': extractor.movie.poster,
+                    'kp_rating': extractor.movie.kp_rating,
+                    'kp_count': extractor.movie.kp_count,
+                    'imdb_rating': extractor.movie.imdb_rating,
+                    'imdb_count': extractor.movie.imdb_count,
                 }
 
+                pprint(d)
+                print()
+
                 result.append(d)
-            pbar.put_nowait(1)
+            # pbar.put_nowait(None)
