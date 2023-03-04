@@ -10,12 +10,12 @@ scraper, parser = Scraper(), Parser()
 
 @timeit
 def main():
-    # scraper.solve_captchas()
-    # scraper.download_movie_list_pages()
-    # parser.extract_movie_urls()
-    # scraper.download_movie_pages()
+    scraper.download_movie_list_pages()
+    parser.extract_movie_urls()
+    scraper.download_movie_pages()
     parser.extract_movies_data()
 
 
 if __name__ == '__main__':
+    scraper.solve_captchas()
     main()

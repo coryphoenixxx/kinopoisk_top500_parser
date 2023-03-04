@@ -7,7 +7,7 @@ from config import config
 
 
 class WebDriver(webdriver.Chrome):
-    def __init__(self, preset, js=False):
+    def __init__(self, preset, js=False, tease_captcha=False):
         self.user_data_dir, self.window_rect = preset
 
         self.options = webdriver.ChromeOptions()
@@ -49,6 +49,9 @@ class WebDriver(webdriver.Chrome):
         self.options.add_argument(f'--user-data-dir={self.user_data_dir}')
         self.options.add_argument('--profile-directory=Default')
 
+        if tease_captcha:
+            self.options.add_argument("--incognito")
+
         if not self.window_rect:
             self.options.add_argument("--start-maximized")
 
@@ -61,6 +64,5 @@ class WebDriver(webdriver.Chrome):
 
         super().get(url)
 
-        if expected_selector:
-            WebDriverWait(self, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, expected_selector)))
+        WebDriverWait(self, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, expected_selector)))
