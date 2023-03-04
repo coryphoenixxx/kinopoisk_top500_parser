@@ -1,34 +1,41 @@
 import re
+from functools import cached_property
 
 import bs4
 from bs4 import BeautifulSoup
 
 
-class ProxyExtractor:
+class BaseExtractor:
     def __init__(self, file):
-        soup = BeautifulSoup(file, "lxml")
-        self.movie = MovieExtractor(soup)
-        self.person = PersonExtractor(soup)
+        self._soup = BeautifulSoup(file, "lxml")
+
+    def as_dict(self):
+        d = {}
+        for k, v in self.__class__.__dict__.items():
+            if type(v) is property:
+                d[k] = getattr(self, k)
+        return d
 
 
-class MovieExtractor:
-    def __init__(self, soup):
-        self._soup = soup
-        self._table = None
-        self._rating_section = None
+class MovieListExtractor(BaseExtractor):
+    @property
+    def positions(self):
+        return [elem.text for elem in self._soup.select('.styles_position__TDe4E')]
 
     @property
     def urls(self):
-        positions = self._soup.select('.styles_position__TDe4E')
-        urls = self._soup.select('.base-movie-main-info_link__YwtP1')
+        return [elem.get('href') for elem in self._soup.select('.base-movie-main-info_link__YwtP1')]
 
-        return positions, urls
+    def as_dict(self):
+        d = {}
+        for pos, url in zip(self.positions, self.urls):
+            d[pos] = {'url': 'https://www.kinopoisk.ru' + url}
+        return d
 
+
+class MovieExtractor(BaseExtractor):
     @property
     def rus_title(self):
-        self._table = self._extract_about_table()  # TODO:
-        self._extract_rating_section()
-
         rus_title = self._soup.select('.styles_title__65Zwx.styles_root__l9kHe.styles_root__5sqsd')[0].text
         return rus_title.split('(')[0].strip()
 
@@ -38,41 +45,40 @@ class MovieExtractor:
             orig_title = self._soup.select('.styles_originalTitle__JaNKM')[0].text
         except IndexError:
             return None
-
         return orig_title.strip()
 
     @property
     def year(self):
-        return int(self._table['Год'].text)
+        return int(self._encyclopedic_table['Год'].text)
 
     @property
     def countries(self):
-        return [x.text for x in self._table['Страна'].find_all('a')]
+        return [a.text for a in self._encyclopedic_table['Страна'].find_all('a')]
 
     @property
     def duration(self):
-        return int(self._table['Время'].text.split(' ')[0])
+        return int(self._encyclopedic_table['Время'].text.split(' ')[0])
 
     @property
     def tagline(self):
-        return self._table['Слоган'].text
+        return self._encyclopedic_table['Слоган'].text
 
     @property
     def genres(self):
-        return [x.text for x in self._table['Жанр'].find_all('a')][:-1]
+        return [a.text for a in self._encyclopedic_table['Жанр'].find_all('a')][:-1]
 
     @property
     def directors(self):
-        return self._extract_person_number(self._table['Режиссер'])
+        return self._extract_person_numbers(self._encyclopedic_table['Режиссер'])
 
     @property
     def writers(self):
-        return self._extract_person_number(self._table['Сценарий'])
+        return self._extract_person_numbers(self._encyclopedic_table['Сценарий'])
 
     @property
     def actors(self):
         a_tags = self._soup.select('.styles_actors__wn_C4')[0]
-        return self._extract_person_number(a_tags)
+        return self._extract_person_numbers(a_tags)
 
     @property
     def description(self):
@@ -113,14 +119,15 @@ class MovieExtractor:
         except AttributeError:
             return None
 
-    def _extract_rating_section(self):
-        self._rating_section = self._soup.find(class_='styles_ratingValue__UO6Zl styles_rootLSize__X4aDt')
+    @cached_property
+    def _rating_section(self):
+        return self._soup.find(class_='styles_ratingValue__UO6Zl styles_rootLSize__X4aDt')
 
-    def _extract_about_table(self):
+    @cached_property
+    def _encyclopedic_table(self):
         required_fields = ('Год', 'Страна', 'Жанр', 'Слоган', 'Режиссер', 'Сценарий', 'Время')
 
         table = self._soup.select('div[data-test-id="encyclopedic-table"]')[0]
-
         table_rows = table.find_all(class_='styles_row__da_RK')
 
         d = {}
@@ -132,10 +139,9 @@ class MovieExtractor:
         return d
 
     @staticmethod
-    def _extract_person_number(tag: bs4.Tag):
-        return re.findall(r'name/(\d+)/', str(tag))
+    def _extract_person_numbers(tag: bs4.Tag):
+        return [int(x) for x in re.findall(r'name/(\d+)/', str(tag))]
 
 
-class PersonExtractor:
-    def __init__(self, soup):
-        self.soup = soup
+class PersonExtractor(BaseExtractor):
+    ...

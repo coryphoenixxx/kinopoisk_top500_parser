@@ -1,5 +1,4 @@
 /venv
-/.env
 /drivers/
 /data/
-/user_datas/
+.env

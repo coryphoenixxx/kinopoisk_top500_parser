@@ -9,7 +9,9 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 class Config:
     def __init__(self):
-        self.proc_nums = int(os.getenv('PROCESS_NUM'))
+        proc_num = os.getenv('PROCESS_NUM')
+        self.proc_nums = int(proc_num) if proc_num else os.cpu_count()
+
         self.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
         self._user_data_dirs = self._create_user_data_dirs()
         self._windows_rects = self._calc_windows_rects()
@@ -25,7 +27,7 @@ class Config:
     def _create_user_data_dirs(self):
         dirs = []
         for i in range(self.proc_nums):
-            path = Path().resolve() / f'user_datas/user_data_{i + 1}'
+            path = Path().resolve() / f'data/user_data/user_data_{i + 1}'
             path.mkdir(parents=True, exist_ok=True)
             dirs.append(path)
         return dirs

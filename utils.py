@@ -1,8 +1,10 @@
+import math
 import time
+from contextlib import suppress
 from functools import wraps
 from multiprocessing import Process, Manager
 from pathlib import Path
-from typing import Collection
+from typing import Collection, Optional
 
 from tqdm import tqdm
 
@@ -25,33 +27,42 @@ def timeit(func):
 def _update_pbar(q, total, desc):
     pbar = tqdm(desc=desc, total=total)
 
-    while True:
-        x = q.get()
-        if x is None:
-            break
-        pbar.update(x)
+    with suppress(EOFError):
+        while True:
+            x = q.get()
+            if x is None:
+                break
+            pbar.update(x)
 
 
 def parallel_run(
         target: callable,
         tasks: Collection,
-        shared_result: bool = False,
+        result_type: Optional[type] = None,
         webdriver: bool = False,
-        pbar_desc: str = None,
+        pbar_desc: Optional[str] = None,
+        reduced: bool = False
 ):
-    global_result = []
+    global_result = None
+    if result_type:
+        global_result = result_type()
+
+    proc_num = config.proc_nums if not reduced else math.ceil(config.proc_nums / 2)
+
+    args = []
 
     with Manager() as manager:
-        args = []
-
-        tasks_queue = manager.Queue()
+        task_queue = manager.Queue()
         for task in tasks:
-            tasks_queue.put(task)
-        args.append(tasks_queue)
+            task_queue.put(task)
+        args.append(task_queue)
 
-        if shared_result:
-            result = manager.list()
-            args.append(result)
+        if result_type:
+            if result_type is list:
+                shared_result = manager.list()
+            elif result_type is dict:
+                shared_result = manager.dict()
+            args.append(shared_result)
 
         if webdriver:
             args.append(config.presets_queue)
@@ -63,7 +74,7 @@ def parallel_run(
             args.append(pbar_queue)
 
         processes = []
-        for _ in range(config.proc_nums):
+        for _ in range(proc_num):
             proc = Process(target=target, args=args)
             processes.append(proc)
             proc.start()
@@ -71,8 +82,10 @@ def parallel_run(
         for proc in processes:
             proc.join()
 
-        if shared_result:
-            global_result.extend(result)
+        if result_type is list:
+            global_result.extend(shared_result)
+        elif result_type is dict:
+            global_result.update(shared_result)
 
         if pbar_desc:
             pbar_queue.put(None)
