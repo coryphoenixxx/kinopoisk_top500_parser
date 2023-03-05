@@ -1,4 +1,5 @@
 from selenium import webdriver
+from selenium.common import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -8,7 +9,9 @@ from config import config
 
 class WebDriver(webdriver.Chrome):
     def __init__(self, preset, js=False, tease_captcha=False):
+        self.preset = preset
         self.user_data_dir, self.window_rect = preset
+        self.js = js
 
         self.options = webdriver.ChromeOptions()
 
@@ -38,7 +41,7 @@ class WebDriver(webdriver.Chrome):
         # self.options.add_experimental_option("prefs", prefs)
 
         self.options.add_experimental_option("prefs", {'profile.managed_default_content_settings.javascript': 2})
-        if js:
+        if js is True:
             self.options.add_experimental_option("prefs", {'profile.managed_default_content_settings.javascript': 1})
 
         self.options.add_experimental_option('excludeSwitches', ['enable-automation'])
@@ -63,5 +66,20 @@ class WebDriver(webdriver.Chrome):
     def get(self, url, expected_selector='body'):
         super().get(url)
 
-        WebDriverWait(self, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, expected_selector)))
+        try:
+            if self.js is False and 'sso' in self.current_url:
+                raise SSOException
+        except SSOException:
+            self.close()
+            self.__init__(preset=self.preset, js=True)
+            self.get(url, expected_selector=expected_selector)
+
+        try:
+            self.find_element(By.CLASS_NAME, 'error-page')
+        except NoSuchElementException:
+            WebDriverWait(self, 3).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, expected_selector)))
+
+
+class SSOException(Exception):
+    pass

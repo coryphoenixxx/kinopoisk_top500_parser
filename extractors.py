@@ -31,7 +31,7 @@ class MovieListExtractor(BaseExtractor):
     def as_dict(self):
         d = {}
         for pos, urn in zip(self.positions, self.urns):
-            d[pos] = {'url': urls.base + urn}
+            d[pos] = urls.base + urn
         return d
 
 

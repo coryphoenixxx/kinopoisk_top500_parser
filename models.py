@@ -17,6 +17,7 @@ class MovieFields:
     actors: list[int]
     description: str
     poster: str
+    stills: list[int]
     kp_rating: float
     kp_count: int
     imdb_rating: float
