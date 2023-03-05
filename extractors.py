@@ -4,6 +4,8 @@ from functools import cached_property
 import bs4
 from bs4 import BeautifulSoup
 
+from utils.url_manager import urls
+
 
 class BaseExtractor:
     def __init__(self, file):
@@ -23,13 +25,13 @@ class MovieListExtractor(BaseExtractor):
         return [elem.text for elem in self._soup.select('.styles_position__TDe4E')]
 
     @property
-    def urls(self):
+    def urns(self):
         return [elem.get('href') for elem in self._soup.select('.base-movie-main-info_link__YwtP1')]
 
     def as_dict(self):
         d = {}
-        for pos, url in zip(self.positions, self.urls):
-            d[pos] = {'url': 'https://www.kinopoisk.ru' + url}
+        for pos, urn in zip(self.positions, self.urns):
+            d[pos] = {'url': urls.base + urn}
         return d
 
 

@@ -32,9 +32,9 @@ class Parser:
         return result
 
     @staticmethod
-    def _extract_movies_data_job(files_queue, result, pbar):
-        while not files_queue.empty():
-            file = files_queue.get()
+    def _extract_movies_data_job(file_q, result, pbar):
+        while not file_q.empty():
+            file = file_q.get()
 
             with file.open(mode='r', encoding='utf-8') as f:
                 movie_data = MovieExtractor(f).as_dict()

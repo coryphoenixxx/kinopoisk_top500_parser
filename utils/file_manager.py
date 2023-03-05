@@ -44,8 +44,8 @@ class FileManager:
         return Dir('user_data')
 
     @staticmethod
-    def user_data_i(self, i):
-        return Dir(f'user_data/user_data_{i + 1}')
+    def user_data_i(i):
+        return Dir(f'user_data/user_data_{i}')
 
     @property
     def movies_data(self):

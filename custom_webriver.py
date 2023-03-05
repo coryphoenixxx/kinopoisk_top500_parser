@@ -61,7 +61,6 @@ class WebDriver(webdriver.Chrome):
             self.set_window_rect(*self.window_rect)
 
     def get(self, url, expected_selector='body'):
-
         super().get(url)
 
         WebDriverWait(self, 10).until(

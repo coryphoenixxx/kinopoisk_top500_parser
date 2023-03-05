@@ -67,10 +67,10 @@ def parallel_run(
             args.append(config.presets)
 
         if pbar_desc:
-            pbar_queue = manager.Queue()
-            pbar_proc = Process(target=_update_pbar, args=(pbar_queue, len(tasks), pbar_desc), daemon=True)
+            pbar_q = manager.Queue()
+            pbar_proc = Process(target=_update_pbar, args=(pbar_q, len(tasks), pbar_desc), daemon=True)
             pbar_proc.start()
-            args.append(pbar_queue)
+            args.append(pbar_q)
 
         processes = []
         for _ in range(proc_num):
@@ -87,6 +87,6 @@ def parallel_run(
             global_result.update(shared_result)
 
         if pbar_desc:
-            pbar_queue.put(None)
+            pbar_q.put(None)
 
     return global_result

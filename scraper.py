@@ -7,13 +7,11 @@ from selenium.webdriver.common.by import By
 from config import config
 from custom_webriver import WebDriver
 from utils.file_manager import fm
+from utils.url_manager import urls
 from utils.utils import parallel_run
 
 
 class Scraper:
-    def __init__(self):
-        self.base_url = 'https://www.kinopoisk.ru'
-
     def solve_captchas(self):
         file = fm.solved_captchas
         if file.exists():
@@ -26,7 +24,7 @@ class Scraper:
 
         result = parallel_run(
             target=self._solve_capthas_job,
-            tasks=[self.base_url] * config.proc_num,
+            tasks=[urls.base] * config.proc_num,
             webdriver=True,
             pbar_desc="Решение капчи",
             result_type=list,
@@ -37,11 +35,9 @@ class Scraper:
     def download_movie_list_pages(self):
         file = fm.movies_data
         if not file.exists():
-            movie_list_urls = [f"{self.base_url}/lists/movies/top500/?page={i + 1}" for i in range(10)]
-
             parallel_run(
                 target=self._download_movie_list_pages_job,
-                tasks=movie_list_urls,
+                tasks=urls.movie_lists,
                 webdriver=True,
                 pbar_desc="Скачивание страниц со списками фильмов",
             )
@@ -61,9 +57,9 @@ class Scraper:
         )
 
     @staticmethod
-    def _solve_capthas_job(urls, result, presets, pbar):
+    def _solve_capthas_job(url_q, result, presets, pbar):
         preset = presets.get()
-        url = urls.get()
+        url = url_q.get()
 
         while True:
             with WebDriver(preset=preset, js=True, tease_captcha=True) as driver:
@@ -91,10 +87,10 @@ class Scraper:
         result.append(True)
 
     @staticmethod
-    def _download_movie_list_pages_job(urls, presets, pbar):
+    def _download_movie_list_pages_job(url_q, presets, pbar):
         with WebDriver(preset=presets.get()) as driver:
-            while not urls.empty():
-                url = urls.get()
+            while not url_q.empty():
+                url = url_q.get()
                 number = int(url.split('page=')[-1])
 
                 driver.get(url, expected_selector='.styles_root__ti07r')
@@ -105,10 +101,10 @@ class Scraper:
                 pbar.put_nowait(1)
 
     @staticmethod
-    def _download_movie_pages_job(urls, presets, pbar):
+    def _download_movie_pages_job(url_q, presets, pbar):
         with WebDriver(preset=presets.get()) as driver:
-            while not urls.empty():
-                number, url = urls.get()
+            while not url_q.empty():
+                number, url = url_q.get()
 
                 driver.get(url, expected_selector='.styles_paragraph__wEGPz')
 
