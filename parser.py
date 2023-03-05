@@ -1,44 +1,27 @@
-import json
-from pathlib import Path
-
 from tqdm import tqdm
 
 from extractors import MovieListExtractor, MovieExtractor
-from utils import get_file, parallel_run
+from utils.file_manager import fm
+from utils.utils import parallel_run
 
 
 class Parser:
     def extract_movie_urls(self):
-        pathdir = Path().resolve() / 'data/pages/movie_lists'
-        movie_list_pages = sorted(pathdir.iterdir())
-
-        result = self._extract_movie_urls_job(movie_list_pages)
-
-        file = get_file(path='data/movies.json')
-
-        with file.open(mode='w', encoding='utf-8') as f:
-            json.dump(result, f, ensure_ascii=False, sort_keys=True, indent=4)
+        result = self._extract_movie_urls_job(fm.movie_lists_html)
+        fm.movies_data.write(result)
 
     def extract_movies_data(self):
-        pathdir = Path().resolve() / 'data/pages/movies'
-        movies_pages = sorted(pathdir.iterdir())
-
         result = parallel_run(
             target=self._extract_movies_data_job,
-            tasks=movies_pages,
+            tasks=fm.movies_html,
             pbar_desc="Извлечение информации о фильмах",
             result_type=dict,
             reduced=True,
         )
 
-        file = get_file(path='data/movies.json')
-        with file.open(mode='r', encoding='utf-8') as f:
-            json_dict: dict = json.load(f)
-
+        json_dict = fm.movies_data.read()
         result = {pos: data | json_dict[pos] for pos, data in result.items()}
-
-        with file.open(mode='w', encoding='utf-8') as f:
-            json.dump(result, f, ensure_ascii=False, indent=4)
+        fm.movies_data.write(result)
 
     @staticmethod
     def _extract_movie_urls_job(files):

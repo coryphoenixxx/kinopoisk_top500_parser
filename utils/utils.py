@@ -3,7 +3,6 @@ import time
 from contextlib import suppress
 from functools import wraps
 from multiprocessing import Process, Manager
-from pathlib import Path
 from typing import Collection, Optional
 
 from tqdm import tqdm
@@ -47,7 +46,7 @@ def parallel_run(
     if result_type:
         global_result = result_type()
 
-    proc_num = config.proc_nums if not reduced else math.ceil(config.proc_nums / 2)
+    proc_num = config.proc_num if not reduced else math.ceil(config.proc_num / 2)
 
     args = []
 
@@ -65,7 +64,7 @@ def parallel_run(
             args.append(shared_result)
 
         if webdriver:
-            args.append(config.presets_queue)
+            args.append(config.presets)
 
         if pbar_desc:
             pbar_queue = manager.Queue()
@@ -91,9 +90,3 @@ def parallel_run(
             pbar_queue.put(None)
 
     return global_result
-
-
-def get_file(path):
-    file = Path().resolve() / path
-    file.parent.mkdir(parents=True, exist_ok=True)
-    return file

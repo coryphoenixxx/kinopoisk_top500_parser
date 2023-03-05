@@ -1,6 +1,4 @@
-import json
 import time
-from pathlib import Path
 from shutil import rmtree
 
 from selenium.common import NoSuchElementException
@@ -8,7 +6,8 @@ from selenium.webdriver.common.by import By
 
 from config import config
 from custom_webriver import WebDriver
-from utils import parallel_run, get_file
+from utils.file_manager import fm
+from utils.utils import parallel_run
 
 
 class Scraper:
@@ -16,29 +15,27 @@ class Scraper:
         self.base_url = 'https://www.kinopoisk.ru'
 
     def solve_captchas(self):
-        file = get_file(path='data/captcha_solved.json')
+        file = fm.solved_captchas
         if file.exists():
-            with file.open(mode='r', encoding='utf-8') as f:
-                data = json.load(f)
-            if len(data) >= config.proc_nums and all(data):
+            data = file.read()
+            if len(data) >= config.proc_num and all(data):
                 print("Решение капчи не требуется...")
                 return
 
-        rmtree(Path().resolve() / 'data/user_data')
+        rmtree(fm.user_data.obj)
 
         result = parallel_run(
             target=self._solve_capthas_job,
-            tasks=[self.base_url] * config.proc_nums,
+            tasks=[self.base_url] * config.proc_num,
             webdriver=True,
             pbar_desc="Решение капчи",
             result_type=list,
         )
 
-        with file.open(mode='w', encoding='utf-8') as f:
-            json.dump(result, f, ensure_ascii=False, sort_keys=True, indent=4)
+        file.write(result)
 
     def download_movie_list_pages(self):
-        file = get_file(path='data/movies.json')
+        file = fm.movies_data
         if not file.exists():
             movie_list_urls = [f"{self.base_url}/lists/movies/top500/?page={i + 1}" for i in range(10)]
 
@@ -52,9 +49,7 @@ class Scraper:
             print("Скачивание страниц со списками фильмов не требуется...")
 
     def download_movie_pages(self):
-        file = get_file(path='data/movies.json')
-        with file.open(mode='r', encoding='utf-8') as f:
-            json_dict: dict = json.load(f)
+        json_dict = fm.movies_data.read()
 
         movie_urls_with_pos = [(int(item[0]), item[1]['url']) for item in json_dict.items()]
 
@@ -100,13 +95,12 @@ class Scraper:
         with WebDriver(preset=presets.get()) as driver:
             while not urls.empty():
                 url = urls.get()
+                number = int(url.split('page=')[-1])
+
                 driver.get(url, expected_selector='.styles_root__ti07r')
 
-                number = int(url.split('page=')[-1])
-                file = get_file(path=f'data/pages/movie_lists/{number:02d}.html')
-
-                with file.open(mode='w', encoding='utf-8') as f:
-                    f.write(driver.page_source)
+                file = fm.movie_list_html(number)
+                file.write(driver.page_source)
 
                 pbar.put_nowait(1)
 
@@ -118,8 +112,7 @@ class Scraper:
 
                 driver.get(url, expected_selector='.styles_paragraph__wEGPz')
 
-                file = get_file(path=f'data/pages/movies/{number:03d}.html')
-                with file.open(mode='w', encoding='utf-8') as f:
-                    f.write(driver.page_source)
+                file = fm.movie_html(number)
+                file.write(driver.page_source)
 
                 pbar.put_nowait(1)

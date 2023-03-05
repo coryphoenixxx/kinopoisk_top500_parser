@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 
 from parser import Parser
 from scraper import Scraper
-from utils import timeit
+from utils.utils import timeit
 
 load_dotenv()
 scraper, parser = Scraper(), Parser()
