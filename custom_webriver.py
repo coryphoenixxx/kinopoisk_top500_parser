@@ -18,7 +18,6 @@ class WebDriver(webdriver.Chrome):
         # self.options.add_argument('--headless')
         # self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
         # self.options.add_argument(f'--user-agent={self.user_agent}')
-        # self.options.add_argument('--disable-extensions')
         # self.options.add_argument("--no-sandbox")
         # self.options.add_argument('-–disable-gpu')
         # self.options.add_argument("--proxy-server='direct://'")
@@ -77,7 +76,7 @@ class WebDriver(webdriver.Chrome):
         try:
             self.find_element(By.CLASS_NAME, 'error-page')
         except NoSuchElementException:
-            WebDriverWait(self, 3).until(
+            WebDriverWait(self, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, expected_selector)))
 
 

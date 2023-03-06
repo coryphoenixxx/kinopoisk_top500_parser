@@ -11,5 +11,8 @@ class UrlManager:
     def movie_screenshots(movie_url):
         return movie_url + 'screenshots/'
 
+    def person_number_to_url(self, number):
+        return self.base + f'/name/{number}/'
+
 
 urls = UrlManager()

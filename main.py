@@ -14,6 +14,7 @@ def main():
     scraper.download_movie_pages()
     parser.extract_movie_data()
     scraper.collect_movie_still_urls()
+    scraper.person_data_extraction()
 
 
 if __name__ == '__main__':

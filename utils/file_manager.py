@@ -23,7 +23,7 @@ class File(StorageUnit):
             else:
                 data = f.read()
         if isinstance(data, dict):
-            data = {int(k): v for k, v in data.items()}
+            data = {int(k): v for k, v in sorted(data.items(), key=lambda x: (int(x[0]), x[1]))}
         return data
 
     def write(self, data):
@@ -89,11 +89,15 @@ class FileManager:
 
     @property
     def movie_htmls(self):
-        return [self.movie_html(i + 1) for i in range(500)]  #:TODO
+        return [self.movie_html(i + 1) for i in range(500)]  # TODO:
 
     @property
     def movies_dir(self):
         return Dir('pages/movies')
+
+    @property
+    def person_data(self):
+        return File('person_data.json')
 
 
 fm = FileManager()

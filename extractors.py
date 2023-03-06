@@ -51,36 +51,35 @@ class MovieExtractor(BaseExtractor):
 
     @property
     def year(self):
-        return int(self._encyclopedic_table['Год'].text)
+        return int(self._about_table['Год'].text)
 
     @property
     def countries(self):
-        return [a.text for a in self._encyclopedic_table['Страна'].find_all('a')]
+        return [a.text for a in self._about_table['Страна'].find_all('a')]
 
     @property
     def duration(self):
-        return int(self._encyclopedic_table['Время'].text.split(' ')[0])
+        return int(self._about_table['Время'].text.split(' ')[0])
 
     @property
     def tagline(self):
-        return self._encyclopedic_table['Слоган'].text
+        return self._about_table['Слоган'].text
 
     @property
     def genres(self):
-        return [a.text for a in self._encyclopedic_table['Жанр'].find_all('a')][:-1]
+        return [a.text for a in self._about_table['Жанр'].find_all('a')][:-1]
 
     @property
     def directors(self):
-        return self._extract_person_numbers(self._encyclopedic_table['Режиссер'])
+        return self._extract_person_urls(self._about_table['Режиссер'])
 
     @property
     def writers(self):
-        return self._extract_person_numbers(self._encyclopedic_table['Сценарий'])
+        return self._extract_person_urls(self._about_table['Сценарий'])
 
     @property
     def actors(self):
-        a_tags = self._soup.select('.styles_actors__wn_C4')[0]
-        return self._extract_person_numbers(a_tags)
+        return self._extract_person_urls(self._soup.select('.styles_actors__wn_C4')[0])
 
     @property
     def description(self):
@@ -126,7 +125,7 @@ class MovieExtractor(BaseExtractor):
         return self._soup.find(class_='styles_ratingValue__UO6Zl styles_rootLSize__X4aDt')
 
     @cached_property
-    def _encyclopedic_table(self):
+    def _about_table(self):
         required_fields = ('Год', 'Страна', 'Жанр', 'Слоган', 'Режиссер', 'Сценарий', 'Время')
 
         table = self._soup.select('div[data-test-id="encyclopedic-table"]')[0]
@@ -136,14 +135,99 @@ class MovieExtractor(BaseExtractor):
         for row in table_rows:
             key = row.find(class_='styles_title__b1HVo').text.split()[0]
             if key in required_fields:
-                value = row.find_all(class_='styles_value__g6yP4')[0]
-                d[key] = value
+                d[key] = row.find(class_='styles_value__g6yP4')
         return d
 
     @staticmethod
-    def _extract_person_numbers(tag: bs4.Tag):
-        return [int(x) for x in re.findall(r'name/(\d+)/', str(tag))]
+    def _extract_person_urls(tag: bs4.Tag):
+        return [urls.person_number_to_url(n)
+                for n in re.findall(r'name/(\d+)/', str(tag))]
 
 
 class PersonExtractor(BaseExtractor):
-    ...
+    @property
+    def rus_name(self):
+        return self._soup.select('.styles_primaryName__2Zu1T')[0].text
+
+    @property
+    def orig_name(self):
+        try:
+            return self._soup.select('.styles_secondaryName__MpB48')[0].text
+        except IndexError:
+            return None
+
+    @property
+    def birth_date(self):
+        try:
+            date = ' '.join(
+                [a.text for a in self._about_table['Дата рождения'].find_all('a')[:2]]
+            ).split(' ')
+            return self._transform_date(date)
+        except (IndexError, ValueError):
+            return None
+
+    @property
+    def death_date(self):
+        date_elem = self._about_table.get('Дата смерти')
+        if date_elem:
+            d = date_elem.text.split('•')[0].split(' ')
+            return self._transform_date([d[0], d[1][:-1], d[2].strip()])
+
+    @property
+    def motherland(self):
+        try:
+            return self._about_table['Место рождения'].find_all('a')[-1].text
+        except (TypeError, IndexError):
+            return None
+
+    @property
+    def avatar(self):
+        return 'https:' + self._soup.select('.styles_root__DZigd')[0].get('src')
+
+    def person_data_is_correct(self):
+        has_avatar = self._soup.select('.styles_root__DZigd')[0].get('srcset')
+        has_motherland = self.motherland
+        has_full_birth_date = self.birth_date
+
+        conditions = [has_avatar, has_motherland, has_full_birth_date]
+
+        try:
+            self.death_date
+        except (IndexError, ValueError):
+            conditions.append(False)
+
+        return all(conditions)
+
+    @cached_property
+    def _about_table(self):
+        required_fields = ('Дата рождения', 'Место рождения', 'Дата смерти')
+
+        table = self._soup.select('.styles_table__p64a3')[0]
+        table_rows = table.find_all(class_='styles_rowDark__ucbcz')
+
+        d = {}
+        for row in table_rows:
+            key = row.find(class_='styles_title__b1HVo').text
+            if key in required_fields:
+                d[key] = row.find(class_='styles_value__g6yP4')
+        return d
+
+    @staticmethod
+    def _transform_date(date):
+        months = [
+            'января',
+            'февраля',
+            'марта',
+            'апреля',
+            'мая',
+            'июня',
+            'июля',
+            'августа',
+            'сентября',
+            'октября',
+            'ноября',
+            'декабря',
+        ]
+
+        day, month, year = int(date[0]), months.index(date[1]) + 1, date[2]
+        return f'{day:02d}-{month:02d}-{year}'
