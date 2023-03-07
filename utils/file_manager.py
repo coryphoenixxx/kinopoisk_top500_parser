@@ -43,7 +43,7 @@ class Dir(StorageUnit):
         return self.obj.iterdir()
 
     def listdir(self):
-        return [obj for obj in self.obj.iterdir()]
+        return list(self.iterdir())
 
 
 class FileManager:
@@ -70,30 +70,6 @@ class FileManager:
     @property
     def full_movie_data(self):
         return File('full_movie_data.json')
-
-    @staticmethod
-    def movie_list_html(number: int):
-        return File(f'pages/movie_lists/{number:02d}.html')
-
-    @property
-    def movie_list_htmls(self):
-        return [self.movie_list_html(i + 1) for i in range(10)]
-
-    @property
-    def movie_lists_dir(self):
-        return Dir('pages/movie_lists')
-
-    @staticmethod
-    def movie_html(number: int):
-        return File(f'pages/movies/{number:03d}.html')
-
-    @property
-    def movie_htmls(self):
-        return [self.movie_html(i + 1) for i in range(500)]  # TODO:
-
-    @property
-    def movies_dir(self):
-        return Dir('pages/movies')
 
     @property
     def person_data(self):

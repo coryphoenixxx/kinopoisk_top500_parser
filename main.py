@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 
-from parser import parser
 from scraper import scraper
 from utils.utils import timeit
 
@@ -9,10 +8,8 @@ load_dotenv()
 
 @timeit
 def main():
-    scraper.download_movie_list_pages()
-    parser.extract_movie_urls()
-    scraper.download_movie_pages()
-    parser.extract_movie_data()
+    scraper.movie_urls_positions_extraction()
+    scraper.movie_data_extraction()
     scraper.collect_movie_still_urls()
     scraper.person_data_extraction()
 

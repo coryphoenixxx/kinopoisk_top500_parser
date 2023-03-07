@@ -38,7 +38,7 @@ def parallel_run(
         target: callable,
         tasks: Collection,
         result_type: Optional[type] = None,
-        webdriver: bool = False,
+        webdriver: bool = True,
         pbar_desc: Optional[str] = None,
         reduced: bool = False
 ):

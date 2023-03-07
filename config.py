@@ -11,12 +11,12 @@ from utils.file_manager import fm
 
 class Config:
     def __init__(self):
-        proc_num = int(os.getenv('PROCESS_NUM'))
+        proc_num = os.getenv('PROCESS_NUM')
 
         self.movie_list_num = int(os.getenv('MOVIE_LIST_NUM'))
         self.movie_num = self.movie_list_num * 50
         self.still_num = int(os.getenv('STILL_NUM'))
-        self.proc_num = proc_num if proc_num else os.cpu_count()
+        self.proc_num = int(proc_num) if proc_num else os.cpu_count()
         self.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
 
     @property

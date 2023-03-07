@@ -9,7 +9,7 @@ from selenium.webdriver.common.by import By
 
 from config import config
 from custom_webriver import WebDriver
-from extractors import PersonExtractor
+from extractors import PersonExtractor, MovieListExtractor, MovieExtractor, MovieStillsExtractor
 from utils.file_manager import fm
 from utils.url_manager import urls
 from utils.utils import parallel_run
@@ -27,17 +27,16 @@ class Scraper:
         rmtree(fm.user_data.obj)
 
         result = parallel_run(
-            target=self.__solve_capthas_job,
+            target=self._solve_capthas_job,
             tasks=[urls.base] * config.proc_num,
-            webdriver=True,
-            pbar_desc="Решение капчи",
             result_type=list,
+            pbar_desc="Решение капчи",
         )
 
         file.write(result)
 
     @staticmethod
-    def __solve_capthas_job(url_q, result, presets, pbar):
+    def _solve_capthas_job(url_q, result, presets, pbar):
         preset = presets.get()
         url = url_q.get()
 
@@ -64,58 +63,56 @@ class Scraper:
 
                 pbar.put_nowait(1)
                 break
+
         result.append(True)
 
-    def download_movie_list_pages(self):
-        if len(fm.movie_lists_dir.listdir()) < config.movie_list_num:
-            parallel_run(
-                target=self.__download_movie_list_pages_job,
+    def movie_urls_positions_extraction(self):
+        if not fm.movie_urls.exists():
+            result = parallel_run(
+                target=self._movie_urls_positions_extraction_job,
                 tasks=urls.movie_lists,
-                webdriver=True,
-                pbar_desc="Скачивание страниц со списками фильмов",
+                result_type=dict,
+                pbar_desc="Извлечение ссылок на фильмы",
                 reduced=True,
             )
+            fm.movie_urls.write(result)
         else:
-            print("Скачивание страниц со списками фильмов не требуется...")
+            print("Извлечение ссылок на фильмы не требуется...")
 
     @staticmethod
-    def __download_movie_list_pages_job(url_q, presets, pbar):
+    def _movie_urls_positions_extraction_job(url_q, result, presets, pbar):
         with WebDriver(preset=presets.get()) as driver:
             while not url_q.empty():
-                url = url_q.get()
-                number = int(url.split('page=')[-1])
-
-                driver.get(url, expected_selector='.styles_root__ti07r')
-
-                file = fm.movie_list_html(number)
-                file.write(driver.page_source)
-
+                driver.get(url_q.get(), expected_selector='.styles_root__ti07r')
+                result.update(MovieListExtractor(driver.page_source).as_dict())
                 pbar.put_nowait(1)
 
-    def download_movie_pages(self):
-        if len(fm.movies_dir.listdir()) < config.movie_num:
+    def movie_data_extraction(self):
+        if not fm.movie_data_without_stills.exists():
             movies_pos_url = fm.movie_urls.read().items()
 
-            parallel_run(
-                target=self.__download_movie_pages_job,
+            result = parallel_run(
+                target=self._movie_data_extraction_job,
                 tasks=movies_pos_url,
-                webdriver=True,
-                pbar_desc="Скачивание страниц фильмов",
+                result_type=dict,
+                pbar_desc="Извлечение информации о фильмах",
             )
+
+            data = fm.movie_urls.read()
+            for pos, url in data.items():
+                result[pos]['url'] = url
+
+            fm.movie_data_without_stills.write(result)
         else:
-            print("Скачивание страниц с фильмами не требуется...")
+            print("Извлечение информации о фильмах не требуется...")
 
     @staticmethod
-    def __download_movie_pages_job(url_q, presets, pbar):
+    def _movie_data_extraction_job(pos_url_q, result, presets, pbar):
         with WebDriver(preset=presets.get()) as driver:
-            while not url_q.empty():
-                pos, url = url_q.get()
-
+            while not pos_url_q.empty():
+                pos, url = pos_url_q.get()
                 driver.get(url, expected_selector='.styles_actors__wn_C4')
-
-                file = fm.movie_html(pos)
-                file.write(driver.page_source)
-
+                result[pos] = MovieExtractor(driver.page_source).as_dict()
                 pbar.put_nowait(1)
 
     def collect_movie_still_urls(self):
@@ -123,9 +120,8 @@ class Scraper:
             movies_pos_url = fm.movie_urls.read().items()
 
             result = parallel_run(
-                target=self.__collect_movie_still_urls_job,
+                target=self._collect_movie_still_urls_job,
                 tasks=movies_pos_url,
-                webdriver=True,
                 result_type=dict,
                 pbar_desc="Извлечение ссылок на кадры",
             )
@@ -139,33 +135,26 @@ class Scraper:
             print("Извлечение ссылок на кадры не требуется...")
 
     @staticmethod
-    def __collect_movie_still_urls_job(url_q, result, presets, pbar):
+    def _collect_movie_still_urls_job(pos_url_q, result, presets, pbar):
         with WebDriver(preset=presets.get()) as driver:
-            while not url_q.empty():
-                pos, url = url_q.get()
+            while not pos_url_q.empty():
+                pos, url = pos_url_q.get()
 
                 driver.get(urls.movie_stills(url), expected_selector='.styles_download__kQ848')
 
                 still_urls = []
                 if 'stills' in driver.current_url:
-                    still_elems = driver.find_elements(By.CSS_SELECTOR, '.styles_download__kQ848')[:config.still_num]
-
-                    for elem in still_elems:
-                        still_urls.append(elem.get_attribute('href'))
+                    extractor = MovieStillsExtractor(driver.page_source)
+                    still_urls.extend(extractor.get_still_urls())
 
                 if len(still_urls) < config.still_num:
                     driver.get(urls.movie_screenshots(url), expected_selector='.styles_download__kQ848')
 
                     if 'screenshots' in driver.current_url:
-                        screenshot_elems = driver.find_elements(
-                            By.CSS_SELECTOR, '.styles_download__kQ848'
-                        )[:config.still_num - len(still_urls)]
-
-                        for elem in screenshot_elems:
-                            still_urls.append(elem.get_attribute('href'))
+                        extractor = MovieStillsExtractor(driver.page_source)
+                        still_urls.extend(extractor.get_screenshot_urls(still_urls))
 
                 result[pos] = still_urls
-
                 pbar.put_nowait(1)
 
     def person_data_extraction(self):
@@ -173,15 +162,14 @@ class Scraper:
             movie_data = fm.full_movie_data.read()
 
             person_urls = set()
-            for _, data in movie_data.items():
+            for data in movie_data.values():
                 person_urls.update(
                     reduce(add, itemgetter('actors', 'directors', 'writers')(data))
                 )
 
             result = parallel_run(
-                target=self.__person_data_extraction_job,
+                target=self._person_data_extraction_job,
                 tasks=person_urls,
-                webdriver=True,
                 result_type=list,
                 pbar_desc="Извлечение информации о персонах...",
             )
@@ -197,7 +185,7 @@ class Scraper:
             print("Извлечение информации по персонам не требуется...")
 
     @staticmethod
-    def __person_data_extraction_job(url_q, result: list, presets, pbar):
+    def _person_data_extraction_job(url_q, result: list, presets, pbar):
         with WebDriver(preset=presets.get()) as driver:
             while not url_q.empty():
                 url = url_q.get()

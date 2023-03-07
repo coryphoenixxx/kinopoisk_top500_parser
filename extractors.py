@@ -4,12 +4,13 @@ from functools import cached_property
 import bs4
 from bs4 import BeautifulSoup
 
+from config import config
 from utils.url_manager import urls
 
 
 class BaseExtractor:
-    def __init__(self, file):
-        self._soup = BeautifulSoup(file, "lxml")
+    def __init__(self, page):
+        self._soup = BeautifulSoup(page, "lxml")
 
     def as_dict(self):
         d = {}
@@ -144,6 +145,20 @@ class MovieExtractor(BaseExtractor):
                 for n in re.findall(r'name/(\d+)/', str(tag))]
 
 
+class MovieStillsExtractor(BaseExtractor):
+    def get_still_urls(self):
+        return self._extract_image_urls(slice(0, config.still_num))
+
+    def get_screenshot_urls(self, stills):
+        return self._extract_image_urls(slice(0, config.still_num - len(stills)))
+
+    def _extract_image_urls(self, slice_):
+        return [
+            'https:' + elem.get('href')
+            for elem in self._soup.select('.styles_download__kQ848')[slice_]
+        ]
+
+
 class PersonExtractor(BaseExtractor):
     @property
     def rus_name(self):
@@ -192,7 +207,7 @@ class PersonExtractor(BaseExtractor):
         conditions = [has_avatar, has_motherland, has_full_birth_date]
 
         try:
-            self.death_date
+            getattr(self, 'death_date')
         except (IndexError, ValueError):
             conditions.append(False)
 
