@@ -5,10 +5,10 @@ import bs4
 from bs4 import BeautifulSoup
 
 from config import config
-from utils.url_manager import urls
+from utils.url_manager import url_m
 
 
-class BaseExtractor:
+class BaseParser:
     def __init__(self, page):
         self._soup = BeautifulSoup(page, "lxml")
 
@@ -20,7 +20,7 @@ class BaseExtractor:
         return d
 
 
-class MovieListExtractor(BaseExtractor):
+class MovieListParser(BaseParser):
     @property
     def positions(self):
         return [elem.text for elem in self._soup.select('.styles_position__TDe4E')]
@@ -32,11 +32,11 @@ class MovieListExtractor(BaseExtractor):
     def as_dict(self):
         d = {}
         for pos, urn in zip(self.positions, self.urns):
-            d[pos] = urls.base + urn
+            d[pos] = url_m.base + urn
         return d
 
 
-class MovieExtractor(BaseExtractor):
+class MovieParser(BaseParser):
     @property
     def rus_title(self):
         rus_title = self._soup.select('.styles_title__65Zwx.styles_root__l9kHe.styles_root__5sqsd')[0].text
@@ -52,7 +52,7 @@ class MovieExtractor(BaseExtractor):
 
     @property
     def year(self):
-        return int(self._about_table['Год'].text)
+        return int(self._about_table['Год производства'].text)
 
     @property
     def countries(self):
@@ -64,7 +64,11 @@ class MovieExtractor(BaseExtractor):
 
     @property
     def tagline(self):
-        return self._about_table['Слоган'].text
+        t = self._about_table['Слоган'].text
+        if t == '—':
+            return None
+        else:
+            t
 
     @property
     def genres(self):
@@ -127,39 +131,34 @@ class MovieExtractor(BaseExtractor):
 
     @cached_property
     def _about_table(self):
-        required_fields = ('Год', 'Страна', 'Жанр', 'Слоган', 'Режиссер', 'Сценарий', 'Время')
+        required_fields = ('Год производства', 'Страна', 'Жанр', 'Слоган', 'Режиссер', 'Сценарий', 'Время')
 
         table = self._soup.select('div[data-test-id="encyclopedic-table"]')[0]
         table_rows = table.find_all(class_='styles_row__da_RK')
 
         d = {}
         for row in table_rows:
-            key = row.find(class_='styles_title__b1HVo').text.split()[0]
+            key = row.find(class_='styles_title__b1HVo').text
             if key in required_fields:
                 d[key] = row.find(class_='styles_value__g6yP4')
         return d
 
     @staticmethod
     def _extract_person_urls(tag: bs4.Tag):
-        return [urls.person_number_to_url(n)
+        return [url_m.person_number_to_url(n)
                 for n in re.findall(r'name/(\d+)/', str(tag))]
 
 
-class MovieStillsExtractor(BaseExtractor):
-    def get_still_urls(self):
-        return self._extract_image_urls(slice(0, config.still_num))
-
-    def get_screenshot_urls(self, stills):
-        return self._extract_image_urls(slice(0, config.still_num - len(stills)))
-
-    def _extract_image_urls(self, slice_):
+class MovieStillsParser(BaseParser):
+    @property
+    def images_urls(self):
         return [
             'https:' + elem.get('href')
-            for elem in self._soup.select('.styles_download__kQ848')[slice_]
+            for elem in self._soup.select('.styles_download__kQ848')[:config.still_num]
         ]
 
 
-class PersonExtractor(BaseExtractor):
+class PersonParser(BaseParser):
     @property
     def rus_name(self):
         return self._soup.select('.styles_primaryName__2Zu1T')[0].text
@@ -174,10 +173,10 @@ class PersonExtractor(BaseExtractor):
     @property
     def birth_date(self):
         try:
-            date = ' '.join(
+            date_obj = ' '.join(
                 [a.text for a in self._about_table['Дата рождения'].find_all('a')[:2]]
             ).split(' ')
-            return self._transform_date(date)
+            return self._d_m_y_format(date_obj)
         except (IndexError, ValueError):
             return None
 
@@ -185,33 +184,33 @@ class PersonExtractor(BaseExtractor):
     def death_date(self):
         date_elem = self._about_table.get('Дата смерти')
         if date_elem:
-            d = date_elem.text.split('•')[0].split(' ')
-            return self._transform_date([d[0], d[1][:-1], d[2].strip()])
+            try:
+                d = date_elem.text.split('•')[0].split(' ')
+                date_obj = [d[0], d[1][:-1], d[2]]
+                return self._d_m_y_format(date_obj)
+            except (IndexError, ValueError):
+                return None
+        return None
 
     @property
     def motherland(self):
         try:
-            return self._about_table['Место рождения'].find_all('a')[-1].text
+            motherland = self._about_table['Место рождения'].find_all('a')[-1].text
         except (TypeError, IndexError):
             return None
 
+        words = []
+        for word in motherland.split(' '):
+            if not word.isupper():
+                word = word.title()
+            words.append(word)
+        return ' '.join(words)
+
     @property
-    def avatar(self):
-        return 'https:' + self._soup.select('.styles_root__DZigd')[0].get('src')
-
-    def person_data_is_correct(self):
-        has_avatar = self._soup.select('.styles_root__DZigd')[0].get('srcset')
-        has_motherland = self.motherland
-        has_full_birth_date = self.birth_date
-
-        conditions = [has_avatar, has_motherland, has_full_birth_date]
-
-        try:
-            getattr(self, 'death_date')
-        except (IndexError, ValueError):
-            conditions.append(False)
-
-        return all(conditions)
+    def photo(self):
+        if self._soup.select('.styles_root__DZigd')[0].get('srcset'):
+            return 'https:' + self._soup.select('.styles_root__DZigd')[0].get('src')
+        return False
 
     @cached_property
     def _about_table(self):
@@ -228,7 +227,7 @@ class PersonExtractor(BaseExtractor):
         return d
 
     @staticmethod
-    def _transform_date(date):
+    def _d_m_y_format(date_obj):
         months = [
             'января',
             'февраля',
@@ -244,5 +243,5 @@ class PersonExtractor(BaseExtractor):
             'декабря',
         ]
 
-        day, month, year = int(date[0]), months.index(date[1]) + 1, date[2]
-        return f'{day:02d}-{month:02d}-{year}'
+        day, month, year = int(date_obj[0]), months.index(date_obj[1]) + 1, date_obj[2]
+        return f'{day:02d}-{month:02d}-{year}'.strip()

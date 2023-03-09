@@ -48,32 +48,32 @@ class Dir(StorageUnit):
 
 class FileManager:
     @property
-    def solved_captchas(self):
+    def solved_captchas_json(self):
         return File('solved_captchas.json')
 
     @property
-    def user_data(self):
-        return Dir('user_data')
+    def chrome_profiles_dir(self):
+        return Dir('chrome_profiles')
 
     @staticmethod
-    def user_data_i(i):
-        return Dir(f'user_data/user_data_{i}')
+    def user_data_dir(i):
+        return Dir(f'chrome_profiles/user_data_{i}')
 
     @property
-    def movie_urls(self):
-        return File('movie_urls.json')
+    def movies_urls_json(self):
+        return File('movies_urls.json')
 
     @property
-    def movie_data_without_stills(self):
-        return File('movie_data_without_stills.json')
+    def movies_data_without_stills_json(self):
+        return File('movies_data_without_stills.json')
 
     @property
-    def full_movie_data(self):
-        return File('full_movie_data.json')
+    def full_movies_data_json(self):
+        return File('full_movies_data.json')
 
     @property
-    def person_data(self):
-        return File('person_data.json')
+    def persons_data_json(self):
+        return File('persons_data.json')
 
 
-fm = FileManager()
+file_m = FileManager()

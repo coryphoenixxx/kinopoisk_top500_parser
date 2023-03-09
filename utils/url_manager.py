@@ -15,4 +15,4 @@ class UrlManager:
         return self.base + f'/name/{number}/'
 
 
-urls = UrlManager()
+url_m = UrlManager()

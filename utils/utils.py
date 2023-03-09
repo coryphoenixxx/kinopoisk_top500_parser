@@ -25,7 +25,6 @@ def timeit(func):
 
 def _update_pbar(q, total, desc):
     pbar = tqdm(desc=desc, total=total)
-
     with suppress(EOFError):
         while True:
             x = q.get()

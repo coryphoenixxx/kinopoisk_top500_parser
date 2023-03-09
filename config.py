@@ -6,17 +6,18 @@ import screeninfo
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-from utils.file_manager import fm
+from utils.file_manager import file_m
 
 
 class Config:
     def __init__(self):
         proc_num = os.getenv('PROCESS_NUM')
-
-        self.movie_list_num = int(os.getenv('MOVIE_LIST_NUM'))
-        self.movie_num = self.movie_list_num * 50
-        self.still_num = int(os.getenv('STILL_NUM'))
         self.proc_num = int(proc_num) if proc_num else os.cpu_count()
+        self.movie_list_num = int(os.getenv('MOVIES_LIST_NUM'))
+        self.movie_num = self.movie_list_num * 50
+        self.still_num = int(os.getenv('STILLS_NUM'))
+        self.limit_count = int(os.getenv('LIMIT_COUNT'))
+        self.limit_sleep = int(os.getenv('LIMIT_SLEEP'))
         self.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
 
     @property
@@ -28,7 +29,7 @@ class Config:
 
     @cached_property
     def _user_data_dirs(self):
-        return [fm.user_data_i(i + 1).obj for i in range(self.proc_num)]
+        return [file_m.user_data_dir(i + 1).obj for i in range(self.proc_num)]
 
     @cached_property
     def _windows_rects(self):

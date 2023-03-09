@@ -8,10 +8,10 @@ load_dotenv()
 
 @timeit
 def main():
-    scraper.movie_urls_positions_extraction()
-    scraper.movie_data_extraction()
-    scraper.collect_movie_still_urls()
-    scraper.person_data_extraction()
+    scraper.get_movie_urls()
+    scraper.get_movies_data_without_stills()
+    scraper.get_movies_stills()
+    scraper.get_persons_data()
 
 
 if __name__ == '__main__':
