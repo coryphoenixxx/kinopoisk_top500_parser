@@ -32,7 +32,7 @@ class MovieListParser(BaseParser):
     def as_dict(self):
         d = {}
         for pos, urn in zip(self.positions, self.urns):
-            d[pos] = url_m.base + urn
+            d[int(pos)] = url_m.base + urn
         return d
 
 

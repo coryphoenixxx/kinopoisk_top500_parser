@@ -1,13 +1,16 @@
 import math
 import time
+from collections import defaultdict
 from contextlib import suppress
 from functools import wraps
 from multiprocessing import Process, Manager
 from typing import Collection, Optional
 
+from tabulate import tabulate
 from tqdm import tqdm
 
 from config import config
+from utils.file_manager import file_m
 
 
 def timeit(func):
@@ -23,6 +26,23 @@ def timeit(func):
     return timeit_wrapper
 
 
+def show_persons_countries():
+    if file_m.persons_data_json.exists():
+        persons_data = file_m.persons_data_json.read()
+
+        countries_count = defaultdict(int)
+        for data in persons_data:
+            countries_count[data['motherland']] += 1
+
+        table = [['Страна', 'Количество'], ]
+        for t in sorted(countries_count.items(), key=lambda x: x[1], reverse=True):
+            table.append(t)
+
+        print(tabulate(table, headers='firstrow', tablefmt='fancy_grid'))
+    else:
+        print("Отсутствует файл persons_data.json!")
+
+
 def _update_pbar(q, total, desc):
     pbar = tqdm(desc=desc, total=total)
     with suppress(EOFError):
@@ -30,7 +50,7 @@ def _update_pbar(q, total, desc):
             x = q.get()
             if x is None:
                 break
-            pbar.update(x)
+            pbar.update(1)
 
 
 def parallel_run(
@@ -60,10 +80,10 @@ def parallel_run(
 
         if result_type:
             if result_type is list:
-                shared_result = manager.list()
+                shared_data = manager.list()
             elif result_type is dict:
-                shared_result = manager.dict()
-            args.append(shared_result)
+                shared_data = manager.dict()
+            args.append(shared_data)
 
         if webdriver:
             args.append(config.presets)
@@ -84,9 +104,9 @@ def parallel_run(
             proc.join()
 
         if result_type is list:
-            run_result.extend(shared_result)
+            run_result.extend(shared_data)
         elif result_type is dict:
-            run_result.update(shared_result)
+            run_result.update(shared_data)
 
         if pbar_desc:
             pbar_q.put(None)

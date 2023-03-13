@@ -64,16 +64,28 @@ class FileManager:
         return JsonFile('movies_urls.json')
 
     @property
-    def movies_data_without_stills_json(self):
-        return JsonFile('movies_data_without_stills.json')
+    def basic_movies_data_json(self):
+        return JsonFile('basic_movies_data.json')
 
     @property
-    def full_movies_data_json(self):
-        return JsonFile('full_movies_data.json')
+    def movies_stills_urls_json(self):
+        return JsonFile('movies_stills_urls.json')
 
     @property
     def persons_data_json(self):
         return JsonFile('persons_data.json')
+
+    @staticmethod
+    def poster_dir(movie_id):
+        return Dir(f'media/movies/{movie_id}/')
+
+    @staticmethod
+    def stills_dir(movie_id):
+        return Dir(f'media/movies/{movie_id}/stills/')
+
+    @staticmethod
+    def photo_dir(person_id):
+        return Dir(f'media/persons/{person_id}/')
 
 
 file_m = FileManager()
