@@ -15,7 +15,7 @@ class StorageUnit:
         return self.obj.exists()
 
 
-class File(StorageUnit):
+class JsonFile(StorageUnit):
     def read(self):
         with self.obj.open(mode='r', encoding='utf-8') as f:
             if self.obj.suffix == '.json':
@@ -49,7 +49,7 @@ class Dir(StorageUnit):
 class FileManager:
     @property
     def solved_captchas_json(self):
-        return File('solved_captchas.json')
+        return JsonFile('solved_captchas.json')
 
     @property
     def chrome_profiles_dir(self):
@@ -61,19 +61,19 @@ class FileManager:
 
     @property
     def movies_urls_json(self):
-        return File('movies_urls.json')
+        return JsonFile('movies_urls.json')
 
     @property
     def movies_data_without_stills_json(self):
-        return File('movies_data_without_stills.json')
+        return JsonFile('movies_data_without_stills.json')
 
     @property
     def full_movies_data_json(self):
-        return File('full_movies_data.json')
+        return JsonFile('full_movies_data.json')
 
     @property
     def persons_data_json(self):
-        return File('persons_data.json')
+        return JsonFile('persons_data.json')
 
 
 file_m = FileManager()

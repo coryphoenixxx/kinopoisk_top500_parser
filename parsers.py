@@ -67,8 +67,7 @@ class MovieParser(BaseParser):
         t = self._about_table['Слоган'].text
         if t == '—':
             return None
-        else:
-            t
+        return t
 
     @property
     def genres(self):
@@ -87,11 +86,11 @@ class MovieParser(BaseParser):
         return self._extract_person_urls(self._soup.select('.styles_actors__wn_C4')[0])
 
     @property
-    def description(self):
+    def synopsys(self):
         return self._soup.select('.styles_paragraph__wEGPz')[0].text.replace('\xa0', ' ')
 
     @property
-    def poster(self):
+    def image(self):
         return 'https:' + self._soup.select('.film-poster')[0].get('src')
 
     @property
@@ -207,7 +206,7 @@ class PersonParser(BaseParser):
         return ' '.join(words)
 
     @property
-    def photo(self):
+    def image(self):
         if self._soup.select('.styles_root__DZigd')[0].get('srcset'):
             return 'https:' + self._soup.select('.styles_root__DZigd')[0].get('src')
         return False

@@ -85,7 +85,7 @@ class Scraper:
 
             data = file_m.movies_urls_json.read()
             for pos, url in data.items():
-                result[pos]['url'] = url
+                result[pos]['kp_url'] = url
 
             file_m.movies_data_without_stills_json.write(result)
         else:
@@ -176,7 +176,7 @@ class Scraper:
                 if False in data.values():
                     continue
 
-                result.append({'url': url} | data)
+                result.append({'kp_url': url} | data)
                 pbar.put_nowait(1)
 
 

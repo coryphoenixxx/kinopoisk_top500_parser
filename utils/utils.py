@@ -41,11 +41,14 @@ def parallel_run(
         pbar_desc: Optional[str] = None,
         reduced: bool = False
 ):
-    global_result = None
+    run_result = None
     if result_type:
-        global_result = result_type()
+        run_result = result_type()
 
     proc_num = config.proc_num if not reduced else math.ceil(config.proc_num / 2)
+    tasks_num = len(tasks)
+    if tasks_num < proc_num:
+        proc_num = tasks_num
 
     args = []
 
@@ -81,11 +84,11 @@ def parallel_run(
             proc.join()
 
         if result_type is list:
-            global_result.extend(shared_result)
+            run_result.extend(shared_result)
         elif result_type is dict:
-            global_result.update(shared_result)
+            run_result.update(shared_result)
 
         if pbar_desc:
             pbar_q.put(None)
 
-    return global_result
+    return run_result

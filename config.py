@@ -20,6 +20,9 @@ class Config:
         self.limit_sleep = int(os.getenv('LIMIT_SLEEP'))
         self.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
 
+        monitor = screeninfo.get_monitors()[0]
+        self.m_width, self.m_height = int(monitor.width), int(monitor.height) - 20
+
     @property
     def presets(self):
         presets = Queue()
@@ -33,49 +36,27 @@ class Config:
 
     @cached_property
     def _windows_rects(self):
-        monitor = screeninfo.get_monitors()[0]
+        windows_rects = {
+            2: self._calc_windows_rects(rows=1, columns=2),
+            4: self._calc_windows_rects(rows=2, columns=2),
+            6: self._calc_windows_rects(rows=2, columns=3),
+            8: self._calc_windows_rects(rows=2, columns=4),
+            16: self._calc_windows_rects(rows=4, columns=4),
+        }
 
-        if self.proc_num == 2:
-            width, height = int(monitor.width) // 2, (int(monitor.height) - 20)
-            return [
-                (0, 0, width, height),
-                (width, 0, width, height),
-            ]
+        result = windows_rects.get(self.proc_num)
+        if result:
+            return result
 
-        elif self.proc_num == 4:
-            width, height = int(monitor.width) // 2, (int(monitor.height) - 20) // 2
-            return [
-                (0, 0, width, height),
-                (width, 0, width, height),
-                (0, height, width, height),
-                (width, height, width, height),
-            ]
+        return (None,) * self.proc_num
 
-        elif self.proc_num == 6:
-            width, height = int(monitor.width) // 3, (int(monitor.height) - 20) // 2
-            return [
-                (0, 0, width, height),
-                (width, 0, width, height),
-                (width * 2, 0, width, height),
-                (0, height, width, height),
-                (width, height, width, height),
-                (width * 2, height, width, height),
-            ]
-
-        elif self.proc_num == 8:
-            width, height = int(monitor.width) // 4, (int(monitor.height) - 20) // 2
-            return [
-                (0, 0, width, height),
-                (width, 0, width, height),
-                (width * 2, 0, width, height),
-                (width * 3, 0, width, height),
-                (0, height, width, height),
-                (width, height, width, height),
-                (width * 2, height, width, height),
-                (width * 3, height, width, height),
-            ]
-        else:
-            return None,
+    def _calc_windows_rects(self, rows, columns):
+        w_w, w_h = self.m_width // columns, self.m_height // rows
+        return [
+            (w_w * i, w_h * j, w_w, w_h)
+            for i in range(columns)
+            for j in range(rows)
+        ]
 
 
 config = Config()
