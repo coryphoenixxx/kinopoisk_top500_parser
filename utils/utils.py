@@ -1,10 +1,9 @@
-import math
 import time
 from collections import defaultdict
 from contextlib import suppress
 from functools import wraps
 from multiprocessing import Process, Manager
-from typing import Collection, Optional
+from typing import Collection, Optional, Tuple
 
 from tabulate import tabulate
 from tqdm import tqdm
@@ -57,17 +56,16 @@ def parallel_run(
         target: callable,
         tasks: Collection,
         result_type: Optional[type] = None,
-        webdriver: bool = True,
-        pbar_desc: Optional[str] = None,
-        reduced: bool = False
+        temp_storage: bool = False,
+        pbar_params: Optional[Tuple[str, int]] = None,
 ):
     run_result = None
     if result_type:
         run_result = result_type()
 
-    proc_num = config.proc_num if not reduced else math.ceil(config.proc_num / 2)
     tasks_num = len(tasks)
-    if tasks_num < proc_num:
+    proc_num = config.proc_num
+    if tasks_num < config.proc_num:
         proc_num = tasks_num
 
     args = []
@@ -78,6 +76,10 @@ def parallel_run(
             task_queue.put(task)
         args.append(task_queue)
 
+        if temp_storage:
+            temp_storage = manager.Queue()
+            args.append(temp_storage)
+
         if result_type:
             if result_type is list:
                 shared_data = manager.list()
@@ -85,12 +87,12 @@ def parallel_run(
                 shared_data = manager.dict()
             args.append(shared_data)
 
-        if webdriver:
-            args.append(config.presets)
+        args.append(config.presets)
 
-        if pbar_desc:
+        if pbar_params:
+            desc, total = pbar_params
             pbar_q = manager.Queue()
-            pbar_proc = Process(target=_update_pbar, args=(pbar_q, len(tasks), pbar_desc), daemon=True)
+            pbar_proc = Process(target=_update_pbar, args=(pbar_q, total, desc), daemon=True)
             pbar_proc.start()
             args.append(pbar_q)
 
@@ -108,7 +110,7 @@ def parallel_run(
         elif result_type is dict:
             run_result.update(shared_data)
 
-        if pbar_desc:
+        if pbar_params:
             pbar_q.put(None)
 
     return run_result

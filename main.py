@@ -8,16 +8,9 @@ load_dotenv()
 
 @timeit
 def scrape():
-    scraper.collect_movies_urls()
-    scraper.get_basic_movies_data()
-    scraper.collect_movies_still_urls()
+    scraper.get_movies_data()
     scraper.get_persons_data()
     scraper.download_images()
-
-
-@timeit
-def normalize():
-    ...
 
 
 if __name__ == '__main__':
@@ -26,15 +19,12 @@ if __name__ == '__main__':
 
     show_persons_countries()
     print(
-        "Ручное исправление кривых стран у персон... \n"
-        "(файл: data/persons_data.json)\n"
-        "'exit' — выход, 'show' — показать снова:"
+        "Ручное исправление некорректных данных по странам у персон... \n"
+        "(файл: data/persons_data.json)"
     )
     while True:
-        user_input = input()
+        user_input = input("Ввод команды 'exit' — выход, 'show' — показать снова:")
         if user_input == 'exit':
             break
         elif user_input == 'show':
             show_persons_countries()
-
-    normalize()

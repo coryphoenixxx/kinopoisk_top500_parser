@@ -32,7 +32,7 @@ class Config:
 
     @cached_property
     def _user_data_dirs(self):
-        return [file_m.user_data_dir(i + 1).obj for i in range(self.proc_num)]
+        return [file_m.user_data_dir(i + 1).mkdir() for i in range(self.proc_num)]
 
     @cached_property
     def _windows_rects(self):

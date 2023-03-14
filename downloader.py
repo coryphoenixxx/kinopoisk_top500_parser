@@ -10,20 +10,20 @@ from tqdm import tqdm
 class ImageDownloader:
     LIMIT = 64
 
-    def __init__(self):
-        self._numbered_urls = None
-        self._download_dir_creator = None
-        self._prefix = None
-        self._extension = None
-        self._need_number = None
-        self._pbar = None
+    def __init__(self, numbered_urls, download_dir_creator, prefix, extension, pbar_desc, need_number=False):
+        self._numbered_urls = numbered_urls
+        self._download_dir_creator = download_dir_creator
+        self._prefix = prefix
+        self._extension = extension
+        self._need_number = need_number
+        self._pbar_desc = pbar_desc
         self._image_number_counter = defaultdict(int)
         self._get_counter = 0
 
     async def _async_download_image(self, sem, session, id_url_tuple):
         image_id, image_url = id_url_tuple
 
-        download_dir = self._download_dir_creator(image_id).obj
+        download_dir = self._download_dir_creator(image_id).mkdir()
 
         prefix = self._prefix
         if self._need_number:
@@ -54,6 +54,8 @@ class ImageDownloader:
         coroutines = []
         sem = Semaphore(self.LIMIT)
 
+        self._pbar = tqdm(total=len(self._numbered_urls), desc=self._pbar_desc)
+
         async with aiohttp.ClientSession() as session:
             for id_url_tuple in self._numbered_urls:
                 coroutine = asyncio.create_task(
@@ -62,14 +64,5 @@ class ImageDownloader:
                 coroutines.append(coroutine)
             await asyncio.gather(*coroutines)
 
-        self._pbar = None
-
-    def run(self, numbered_urls, download_dir_creator, prefix, extension, pbar_desc, need_number=False):
-        self._numbered_urls = numbered_urls
-        self._download_dir_creator = download_dir_creator
-        self._prefix = prefix
-        self._extension = extension
-        self._need_number = need_number
-        self._pbar = tqdm(total=len(numbered_urls), desc=pbar_desc)
-
+    def run(self):
         asyncio.run(self._async_download_images())
