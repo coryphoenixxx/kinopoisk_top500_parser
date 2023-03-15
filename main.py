@@ -1,10 +1,6 @@
-from dotenv import load_dotenv
-
 from normalizer import Normalizer
 from scraper import scraper
 from utils.utils import timeit, show_persons_countries
-
-load_dotenv()
 
 
 @timeit

@@ -72,10 +72,7 @@ def parallel_run(
     if result_type:
         run_result = result_type()
 
-    tasks_num = len(tasks)
-    proc_num = config.proc_num
-    if tasks_num < config.proc_num:
-        proc_num = tasks_num
+    proc_num = min(config.proc_num, len(tasks))
 
     args = []
 

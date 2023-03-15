@@ -48,6 +48,10 @@ class Dir(StorageUnit):
 
 
 class FileManager:
+    @staticmethod
+    def drivers_dir(i):
+        return Dir(f'drivers/driver_{i}')
+
     @property
     def chrome_profiles_dir(self):
         return Dir('chrome_profiles')

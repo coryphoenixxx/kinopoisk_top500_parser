@@ -3,9 +3,11 @@ from typing import Optional
 
 from selenium import webdriver
 from selenium.common import NoSuchElementException, TimeoutException
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
+from webdriver_manager.chrome import ChromeDriverManager
 
 from config import config
 
@@ -28,11 +30,15 @@ class WebDriver(webdriver.Chrome):
         self._counter = 0
         self._restore_default = restore_default
 
-        user_data_dir, window_rect = preset
+        driver_dir, user_data_dir, window_rect = preset
+        self.service = Service(executable_path=ChromeDriverManager(path=driver_dir).install())
+
         self.options = webdriver.ChromeOptions()
 
         self.options.add_argument("--disable-infobars")
         self.options.add_argument("--disable-extensions")
+        self.options.add_argument('--no-sandbox')
+        self.options.add_argument('--disable-dev-shm-usage')
         self.options.add_argument('--disable-blink-features=AutomationControlled')
         self.options.add_argument(f'--user-data-dir={user_data_dir}')
         self.options.add_argument('--profile-directory=Default')
@@ -50,7 +56,7 @@ class WebDriver(webdriver.Chrome):
         if not window_rect:
             self.options.add_argument("--start-maximized")
 
-        super().__init__(service=config.service, options=self.options)
+        super().__init__(service=self.service, options=self.options)
 
         if window_rect:
             self.set_window_rect(*window_rect)
@@ -84,11 +90,13 @@ class WebDriver(webdriver.Chrome):
         if 'sso' in self.current_url and self._js is False:
             self._restart(url, expected_selector, js=True, images=False, restore_default=True)
 
+
         try:
             self.find_element(By.CLASS_NAME, 'error-page')
         except NoSuchElementException:
+
             try:
-                WebDriverWait(self, 3).until(
+                WebDriverWait(self, 5).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, expected_selector)))
             except TimeoutException:
                 self.get(url, expected_selector)

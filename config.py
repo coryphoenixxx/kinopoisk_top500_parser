@@ -3,10 +3,11 @@ from functools import cached_property
 from multiprocessing import Queue
 
 import screeninfo
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from dotenv import load_dotenv
 
 from utils.file_manager import file_m
+
+load_dotenv()
 
 
 class Config:
@@ -18,7 +19,6 @@ class Config:
         self.still_num = int(os.getenv('STILLS_NUM'))
         self.limit_count = int(os.getenv('LIMIT_COUNT'))
         self.limit_sleep = int(os.getenv('LIMIT_SLEEP'))
-        self.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
 
         monitor = screeninfo.get_monitors()[0]
         self.m_width, self.m_height = int(monitor.width), int(monitor.height) - 30
@@ -26,9 +26,13 @@ class Config:
     @property
     def presets(self):
         presets = Queue()
-        for preset in zip(self._user_data_dirs, self._windows_rects):
+        for preset in zip(self._driver_dirs, self._user_data_dirs, self._windows_rects):
             presets.put(preset)
         return presets
+
+    @cached_property
+    def _driver_dirs(self):
+        return [file_m.drivers_dir(i + 1).mkdir() for i in range(self.proc_num)]
 
     @cached_property
     def _user_data_dirs(self):
