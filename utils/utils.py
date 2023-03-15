@@ -1,11 +1,10 @@
 import time
-from collections import defaultdict
 from contextlib import suppress
 from functools import wraps
 from multiprocessing import Process, Manager
 from typing import Collection, Optional, Tuple
 
-from tabulate import tabulate
+from prettytable import PrettyTable
 from tqdm import tqdm
 
 from config import config
@@ -19,27 +18,37 @@ def timeit(func):
         result = func(*args, **kwargs)
         end_time = time.perf_counter()
         total_time = end_time - start_time
-        print(f'\nFunction {func.__name__}{args} {kwargs} Took {total_time:.4f} seconds')
+        print(f'\n{func.__name__}{args} {kwargs} ——— {total_time:.4f} сек.')
         return result
 
     return timeit_wrapper
+
+
+def _chunked(lst, n):
+    for i in range(0, len(lst), n):
+        x = lst[i:i + n]
+        x.extend([''] * (n - len(x)))
+        yield x
 
 
 def show_persons_countries():
     if file_m.persons_data_json.exists():
         persons_data = file_m.persons_data_json.read()
 
-        countries_count = defaultdict(int)
+        countries = set()
         for data in persons_data:
-            countries_count[data['motherland']] += 1
+            motherland = data['motherland']
+            if motherland:
+                countries.add(motherland)
 
-        table = [['Страна', 'Количество'], ]
-        for t in sorted(countries_count.items(), key=lambda x: x[1], reverse=True):
-            table.append(t)
+        table = PrettyTable()
+        for chunk in _chunked(sorted(countries), n=6):
+            table.add_row(chunk)
 
-        print(tabulate(table, headers='firstrow', tablefmt='fancy_grid'))
+        print(table)
+
     else:
-        print("Отсутствует файл persons_data.json!")
+        print("Отсутствует файл data/persons_data.json!")
 
 
 def _update_pbar(q, total, desc):

@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Optional
 
 
@@ -20,9 +19,8 @@ class MovieFields:
     image: str
     kp_rating: float
     kp_count: int
-    imdb_rating: float
-    imdb_count: int
-    price: Decimal = Decimal("0.00")
+    imdb_rating: Optional[float]
+    imdb_count: Optional[int]
 
 
 @dataclass
@@ -37,10 +35,10 @@ class PersonFields:
     kp_url: str
     rus_name: str
     orig_name: Optional[str]
-    birth_date: str
-    death_date: str
-    image: str
-    motherland: int
+    birth_date: Optional[str]
+    death_date: Optional[str]
+    image: Optional[str]
+    motherland: Optional[int]
 
 
 @dataclass
@@ -70,7 +68,7 @@ class CountryFields:
 @dataclass
 class Country:
     pk: int
-    fields: PersonFields
+    fields: CountryFields
     model: str = 'movies.country'
 
 

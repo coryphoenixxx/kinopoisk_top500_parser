@@ -175,7 +175,7 @@ class PersonParser(BaseParser):
             date_obj = ' '.join(
                 [a.text for a in self._about_table['Дата рождения'].find_all('a')[:2]]
             ).split(' ')
-            return self._d_m_y_format(date_obj)
+            return self._YYYY_MM_DD_format(date_obj)
         except (IndexError, ValueError):
             return None
 
@@ -186,7 +186,7 @@ class PersonParser(BaseParser):
             try:
                 d = date_elem.text.split('•')[0].split(' ')
                 date_obj = [d[0], d[1][:-1], d[2]]
-                return self._d_m_y_format(date_obj)
+                return self._YYYY_MM_DD_format(date_obj)
             except (IndexError, ValueError):
                 return None
         return None
@@ -194,8 +194,12 @@ class PersonParser(BaseParser):
     @property
     def motherland(self):
         try:
-            motherland = self._about_table['Место рождения'].find_all('a')[-1].text
+            motherland = self._about_table['Место рождения'].text.split(',')[-1] \
+                .replace('.', '').replace('‎', '').strip()
         except (TypeError, IndexError):
+            return None
+
+        if motherland == '—' or not motherland:
             return None
 
         words = []
@@ -209,7 +213,7 @@ class PersonParser(BaseParser):
     def image(self):
         if self._soup.select('.styles_root__DZigd')[0].get('srcset'):
             return 'https:' + self._soup.select('.styles_root__DZigd')[0].get('src')
-        return False
+        return None
 
     @cached_property
     def _about_table(self):
@@ -226,7 +230,7 @@ class PersonParser(BaseParser):
         return d
 
     @staticmethod
-    def _d_m_y_format(date_obj):
+    def _YYYY_MM_DD_format(date_obj):
         months = [
             'января',
             'февраля',
@@ -242,5 +246,5 @@ class PersonParser(BaseParser):
             'декабря',
         ]
 
-        day, month, year = int(date_obj[0]), months.index(date_obj[1]) + 1, date_obj[2]
-        return f'{day:02d}-{month:02d}-{year}'.strip()
+        day, month, year = int(date_obj[0]), months.index(date_obj[1]) + 1, int(date_obj[2])
+        return f'{year:04d}-{month:02d}-{day:02d}'.strip()

@@ -122,7 +122,7 @@ class Scraper:
 
             numbered_persons_data = []
             for i, data in enumerate(persons_data, start=1):
-                numbered_persons_data.append({'number': i} | data)
+                numbered_persons_data.append({'person_id': i} | data)
 
             file_m.persons_data_json.write(numbered_persons_data)
         else:
@@ -130,14 +130,18 @@ class Scraper:
 
     @staticmethod
     def _get_persons_data_process_job(persons_urls, result: list, presets, pbar):
+        correct_countries = file_m.correct_countries_json.read()
+
         with WebDriver(preset=presets.get()) as driver:
             while not persons_urls.empty():
                 url = persons_urls.get()
                 driver.get(url, expected_selector='.styles_primaryName__2Zu1T')
 
                 data = PersonParser(driver.page_source).as_dict()
-                if False in data.values():
-                    continue
+
+                c = correct_countries.get(data['motherland'])
+                if c:
+                    data['motherland'] = c
 
                 result.append({'kp_url': url} | data)
                 pbar.put_nowait(1)
@@ -175,7 +179,12 @@ class Scraper:
 
         if not file_m.persons_images_dir.exists():
             persons_data = file_m.persons_data_json.read()
-            photos_urls = [(data['number'], data['image']) for data in persons_data]
+
+            photos_urls = []
+            for data in persons_data:
+                photo_url = data.get('image')
+                if photo_url:
+                    photos_urls.append((data['person_id'], photo_url))
 
             downloader = ImageDownloader(
                 numbered_urls=photos_urls,

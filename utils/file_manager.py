@@ -4,9 +4,9 @@ from shutil import rmtree
 
 
 class StorageUnit:
-    def __init__(self, path):
+    def __init__(self, path, pdir='data'):
         self.root_dir = Path(__file__).resolve().parent.parent
-        self.path = self.root_dir / 'data' / path
+        self.path = self.root_dir / pdir / path
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def exists(self):
@@ -22,12 +22,14 @@ class JsonFile(StorageUnit):
             data = json.load(f)
 
         if isinstance(data, dict):
-            data = {
-                int(k): v
-                for k, v in sorted(data.items(), key=lambda x: (int(x[0]), x[1]))
-                if k.isnumeric()
-            }
-
+            if list(data.keys())[0].isnumeric():
+                try:
+                    data = {
+                        int(k): v
+                        for k, v in sorted(data.items(), key=lambda x: (int(x[0]), x[1]))
+                    }
+                except ValueError:
+                    pass
         return data
 
     def write(self, data):
@@ -63,6 +65,10 @@ class FileManager:
         return JsonFile('movies_urls.json')
 
     @property
+    def correct_countries_json(self):
+        return JsonFile('correct_countries.json', pdir='utils')
+
+    @property
     def movies_data_json(self):
         return JsonFile('movies_data.json')
 
@@ -89,6 +95,10 @@ class FileManager:
     @staticmethod
     def photo_dir(person_id):
         return Dir(f'media/persons/{person_id}/')
+
+    @property
+    def fixtures_json(self):
+        return JsonFile('fixtures.json')
 
 
 file_m = FileManager()

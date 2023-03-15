@@ -55,7 +55,7 @@ class WebDriver(webdriver.Chrome):
         if window_rect:
             self.set_window_rect(*window_rect)
 
-    def get(self, url, expected_selector='body') -> Optional[True]:
+    def get(self, url, expected_selector='body') -> Optional[bool]:
         super().get(url)
 
         if 'showcaptcha' not in self.current_url and self._restore_default is True:

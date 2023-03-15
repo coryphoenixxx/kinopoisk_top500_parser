@@ -21,7 +21,7 @@ class Config:
         self.service = Service(executable_path=ChromeDriverManager(path=r".\drivers").install())
 
         monitor = screeninfo.get_monitors()[0]
-        self.m_width, self.m_height = int(monitor.width), int(monitor.height) - 20
+        self.m_width, self.m_height = int(monitor.width), int(monitor.height) - 30
 
     @property
     def presets(self):
