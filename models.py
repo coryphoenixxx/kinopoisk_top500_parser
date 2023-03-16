@@ -3,7 +3,7 @@ from typing import Optional
 
 
 @dataclass
-class MovieFields:
+class Movie:
     kp_url: str
     rus_title: str
     orig_title: Optional[str]
@@ -24,14 +24,7 @@ class MovieFields:
 
 
 @dataclass
-class Movie:
-    pk: int
-    fields: MovieFields
-    model: str = 'movies.movie'
-
-
-@dataclass
-class PersonFields:
+class Person:
     kp_url: str
     rus_name: str
     orig_name: Optional[str]
@@ -42,44 +35,16 @@ class PersonFields:
 
 
 @dataclass
-class Person:
-    pk: int
-    fields: PersonFields
-    model: str = 'movies.person'
-
-
-@dataclass
-class GenreFields:
-    name: str
-
-
-@dataclass
 class Genre:
-    pk: int
-    fields: GenreFields
-    model: str = 'movies.genre'
-
-
-@dataclass
-class CountryFields:
     name: str
 
 
 @dataclass
 class Country:
-    pk: int
-    fields: CountryFields
-    model: str = 'movies.country'
-
-
-@dataclass
-class MovieStillFields:
-    movie: int
-    image: str
+    name: str
 
 
 @dataclass
 class MovieStill:
-    pk: int
-    fields: MovieStillFields
-    model: str = 'movies.moviestill'
+    movie: int
+    image: str

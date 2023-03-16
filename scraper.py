@@ -57,7 +57,7 @@ class Scraper:
                 tasks=url_m.movie_lists,
                 result_type=dict,
                 temp_storage=True,
-                pbar_params=("Извлечение информации о фильмах", config.movie_list_num * 50),
+                pbar_params=("Извлечение информации о фильмах", config.movie_num),
             )
 
             file_m.movies_data_json.write(movies_data)
@@ -108,9 +108,9 @@ class Scraper:
             movies_data = file_m.movies_data_json.read()
 
             persons_urls = set()
-            for data in movies_data.values():
+            for movie in movies_data.values():
                 persons_urls.update(
-                    reduce(add, itemgetter('actors', 'directors', 'writers')(data))
+                    reduce(add, itemgetter('actors', 'directors', 'writers')(movie))
                 )
 
             persons_data = parallel_run(
@@ -137,13 +137,13 @@ class Scraper:
                 url = persons_urls.get()
                 driver.get(url, expected_selector='.styles_primaryName__2Zu1T')
 
-                data = PersonParser(driver.page_source).as_dict()
+                person_data = PersonParser(driver.page_source).as_dict()
 
-                c = correct_countries.get(data['motherland'])
+                c = correct_countries.get(person_data['motherland'])
                 if c:
-                    data['motherland'] = c
+                    person_data['motherland'] = c
 
-                result.append({'kp_url': url} | data)
+                result.append({'kp_url': url} | person_data)
                 pbar.put_nowait(1)
 
     @staticmethod
@@ -151,7 +151,7 @@ class Scraper:
         if not file_m.movies_images_dir.exists():
             movies_data = file_m.movies_data_json.read()
 
-            posters_urls = [(movie_id, data['image']) for movie_id, data in movies_data.items()]
+            posters_urls = [(movie_id, movie['image']) for movie_id, movie in movies_data.items()]
             downloader = ImageDownloader(
                 numbered_urls=posters_urls,
                 download_dir_creator=file_m.poster_dir,
@@ -162,8 +162,8 @@ class Scraper:
             downloader.run()
 
             stills_urls = []
-            for movie_id, data in movies_data.items():
-                stills_urls.extend([(movie_id, still_url) for still_url in data['stills']])
+            for movie_id, movie in movies_data.items():
+                stills_urls.extend([(movie_id, still_url) for still_url in movie['stills']])
 
             downloader = ImageDownloader(
                 numbered_urls=stills_urls,
@@ -181,10 +181,10 @@ class Scraper:
             persons_data = file_m.persons_data_json.read()
 
             photos_urls = []
-            for data in persons_data:
-                photo_url = data.get('image')
+            for person in persons_data:
+                photo_url = person.get('image')
                 if photo_url:
-                    photos_urls.append((data['person_id'], photo_url))
+                    photos_urls.append((person['person_id'], photo_url))
 
             downloader = ImageDownloader(
                 numbered_urls=photos_urls,

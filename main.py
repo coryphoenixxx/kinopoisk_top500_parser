@@ -1,5 +1,6 @@
-from normalizer import Normalizer
+from fixtures import FixturesCreator
 from scraper import scraper
+from utils.file_manager import file_m
 from utils.utils import timeit, show_persons_countries
 
 
@@ -27,5 +28,4 @@ if __name__ == '__main__':
         elif user_input == 'show':
             show_persons_countries()
 
-    normalizer = Normalizer()
-    normalizer.create_fixtures()
+    file_m.fixtures_json.write(FixturesCreator().run())
