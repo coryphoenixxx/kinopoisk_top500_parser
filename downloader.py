@@ -8,12 +8,12 @@ from tqdm import tqdm
 
 
 class ImageDownloader:
-    LIMIT = 64
+    LIMIT = 32
 
-    def __init__(self, numbered_urls, download_dir_creator, prefix, extension, pbar_desc, need_number=False):
+    def __init__(self, numbered_urls, download_dir_creator, filename, extension, pbar_desc, need_number=False):
         self._numbered_urls = numbered_urls
         self._download_dir_creator = download_dir_creator
-        self._prefix = prefix
+        self._filename = filename
         self._extension = extension
         self._need_number = need_number
         self._pbar_desc = pbar_desc
@@ -25,16 +25,16 @@ class ImageDownloader:
 
         download_dir = self._download_dir_creator(image_id).mkdir()
 
-        prefix = self._prefix
+        filename = self._filename
         if self._need_number:
             self._image_number_counter[image_id] += 1
             number = self._image_number_counter[image_id]
-            prefix = f"{prefix}_{number}"
+            filename = f"{filename}_{number}"
 
-        filepath = download_dir / f"{prefix}.{self._extension}"
+        filepath = download_dir / f"{filename}.{self._extension}"
 
         async with sem:
-            for _ in range(10):
+            for _ in range(20):
                 async with session.get(image_url) as response:
                     if response.status == 200:
                         content = await response.read()
@@ -42,13 +42,14 @@ class ImageDownloader:
                             await f.write(content)
                         break
                     else:
-                        await asyncio.sleep(0.5)
-                        continue
+                        await asyncio.sleep(1)
+            else:
+                print(f'{image_id} ({image_url}) — не скачано!')
 
         self._pbar.update(1)
         self._get_counter += 1
         if self._get_counter % 10:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1)
 
     async def _async_download_images(self):
         coroutines = []

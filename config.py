@@ -19,6 +19,11 @@ class Config:
         self.still_num = int(os.getenv('STILLS_NUM'))
         self.limit_count = int(os.getenv('LIMIT_COUNT'))
         self.limit_sleep = int(os.getenv('LIMIT_SLEEP'))
+        self.base_url = 'https://www.kinopoisk.ru'
+        self.movie_lists_urls = [
+            f"{self.base_url}/lists/movies/top500/?page={i + 1}"
+            for i in range(self.movie_list_num)
+        ]
 
         monitor = screeninfo.get_monitors()[0]
         self.m_width, self.m_height = int(monitor.width), int(monitor.height) - 30
@@ -45,7 +50,6 @@ class Config:
             4: self._calc_windows_rects(rows=2, columns=2),
             6: self._calc_windows_rects(rows=2, columns=3),
             8: self._calc_windows_rects(rows=2, columns=4),
-            16: self._calc_windows_rects(rows=4, columns=4),
         }
 
         result = windows_rects.get(self.proc_num)

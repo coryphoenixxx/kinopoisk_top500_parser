@@ -17,19 +17,12 @@ class StorageUnit:
 
 
 class JsonFile(StorageUnit):
-    def read(self):
+    def read(self, model=None):
         with self.path.open(mode='r', encoding='utf-8') as f:
             data = json.load(f)
 
-        if isinstance(data, dict):
-            if list(data.keys())[0].isnumeric():
-                try:
-                    data = {
-                        int(k): v
-                        for k, v in sorted(data.items(), key=lambda x: (int(x[0]), x[1]))
-                    }
-                except ValueError:
-                    pass
+        if model:
+            return [model(**d) for d in data]
         return data
 
     def write(self, data):

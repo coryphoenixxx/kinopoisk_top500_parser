@@ -1,12 +1,13 @@
+from dataclasses import asdict
 from functools import reduce
 from operator import itemgetter, add
 
 from config import config
 from custom_webriver import WebDriver
 from downloader import ImageDownloader
+from models import Person, Movie
 from parsers import PersonParser, MovieListParser, MovieParser, MovieStillsParser
 from utils.file_manager import file_m
-from utils.url_manager import url_m
 from utils.utils import parallel_run
 
 
@@ -23,9 +24,8 @@ class Scraper:
 
         result = parallel_run(
             target=self._solve_capthas_process_job,
-            tasks=[url_m.base] * config.proc_num,
-            result_type=list,
-            pbar_params=("Решение капчи", config.proc_num),
+            tasks=[config.base_url] * config.proc_num,
+            pbar_desc="Решение капчи",
         )
 
         file.write(result)
@@ -52,84 +52,84 @@ class Scraper:
 
     def get_movies_data(self):
         if not file_m.movies_data_json.exists():
-            movies_data = parallel_run(
-                target=self._get_movies_data_process_job,
-                tasks=url_m.movie_lists,
-                result_type=dict,
-                temp_storage=True,
-                pbar_params=("Извлечение информации о фильмах", config.movie_num),
+            movie_ids_urls = parallel_run(
+                target=self._get_movies_urls_process_job,
+                tasks=config.movie_lists_urls,
+                pbar_desc="Извлечение ссылок на фильмы",
             )
 
-            file_m.movies_data_json.write(movies_data)
+            movies = parallel_run(
+                target=self._get_movies_data_process_job,
+                tasks=movie_ids_urls,
+                pbar_desc="Извлечение информации о фильмах",
+            )
+
+            file_m.movies_data_json.write(movies)
         else:
             print("Извлечение информации о фильмах не требуется...")
 
     @staticmethod
-    def _get_movies_data_process_job(movie_lists_urls, numbered_movies_urls, result, presets, pbar):
+    def _get_movies_urls_process_job(movie_lists_urls, result, presets, pbar):
         with WebDriver(preset=presets.get()) as driver:
             while not movie_lists_urls.empty():
                 driver.get(movie_lists_urls.get(), expected_selector='.styles_root__ti07r')
 
-                pos_url_tuples = list(MovieListParser(driver.page_source).as_dict().items())
+                movie_id_url_tuples = MovieListParser(driver.page_source).data.items()
 
-                for t in pos_url_tuples:
-                    numbered_movies_urls.put(t)
+                result.extend(movie_id_url_tuples)
+                pbar.put_nowait(1)
 
-            while not numbered_movies_urls.empty():
-                pos, url = numbered_movies_urls.get()
+    @staticmethod
+    def _get_movies_data_process_job(movie_ids_urls, result, presets, pbar):
+        with WebDriver(preset=presets.get()) as driver:
+            while not movie_ids_urls.empty():
+                movie_id, movie_url = movie_ids_urls.get()
 
-                driver.get(url, expected_selector='.styles_actors__wn_C4')
+                driver.get(movie_url, expected_selector='.styles_actors__wn_C4')
 
-                movie_data = MovieParser(driver.page_source).as_dict()
+                movie = MovieParser(driver.page_source).data
+                movie.id, movie.kp_url = movie_id, movie_url
 
-                driver.get(url_m.movie_stills(url), expected_selector='.styles_download__kQ848')
+                driver.get(movie_url + 'stills/', expected_selector='.styles_download__kQ848')
 
-                movie_stills = []
                 if 'stills' in driver.current_url:
                     parser = MovieStillsParser(driver.page_source)
-                    movie_stills.extend(parser.images_urls)
+                    movie.stills.extend(parser.images_urls)
 
-                if len(movie_stills) < config.still_num:
-                    driver.get(url_m.movie_screenshots(url), expected_selector='.styles_download__kQ848')
+                if len(movie.stills) < config.still_num:
+                    driver.get(movie_url + 'screenshots/', expected_selector='.styles_download__kQ848')
 
                     if 'screenshots' in driver.current_url:
                         parser = MovieStillsParser(driver.page_source)
-                        screenshots_urls = parser.images_urls[:config.still_num - len(movie_stills)]
-                        movie_stills.extend(screenshots_urls)
+                        screenshots_urls = parser.images_urls[:config.still_num - len(movie.stills)]
+                        movie.stills.extend(screenshots_urls)
 
-                movie_data['stills'] = movie_stills
-                movie_data['kp_url'] = url
-
-                result[pos] = movie_data
+                result.append(asdict(movie))
                 pbar.put_nowait(1)
 
     def get_persons_data(self):
         if not file_m.persons_data_json.exists():
-            movies_data = file_m.movies_data_json.read()
+            movies = file_m.movies_data_json.read()
 
             persons_urls = set()
-            for movie in movies_data.values():
+            for movie in movies:
                 persons_urls.update(
                     reduce(add, itemgetter('actors', 'directors', 'writers')(movie))
                 )
 
-            persons_data = parallel_run(
+            persons = parallel_run(
                 target=self._get_persons_data_process_job,
                 tasks=persons_urls,
-                result_type=list,
-                pbar_params=("Извлечение информации о персонах...", len(persons_urls)),
+                counter=True,
+                pbar_desc="Извлечение информации о персонах...",
             )
 
-            numbered_persons_data = []
-            for i, data in enumerate(persons_data, start=1):
-                numbered_persons_data.append({'person_id': i} | data)
-
-            file_m.persons_data_json.write(numbered_persons_data)
+            file_m.persons_data_json.write(persons)
         else:
             print("Извлечение информации по персонам не требуется...")
 
     @staticmethod
-    def _get_persons_data_process_job(persons_urls, result: list, presets, pbar):
+    def _get_persons_data_process_job(persons_urls, result, counter, presets, pbar):
         correct_countries = file_m.correct_countries_json.read()
 
         with WebDriver(preset=presets.get()) as driver:
@@ -137,62 +137,56 @@ class Scraper:
                 url = persons_urls.get()
                 driver.get(url, expected_selector='.styles_primaryName__2Zu1T')
 
-                person_data = PersonParser(driver.page_source).as_dict()
+                person = PersonParser(driver.page_source).data
 
-                c = correct_countries.get(person_data['motherland'])
-                if c:
-                    person_data['motherland'] = c
+                counter.value += 1
+                person.id = counter.value
+                person.kp_url = url
 
-                result.append({'kp_url': url} | person_data)
+                person.motherland = correct_countries.get(person.motherland) or person.motherland
+
+                result.append(asdict(person))
                 pbar.put_nowait(1)
 
     @staticmethod
     def download_images():
         if not file_m.movies_images_dir.exists():
-            movies_data = file_m.movies_data_json.read()
+            movies = file_m.movies_data_json.read(Movie)
 
-            posters_urls = [(movie_id, movie['image']) for movie_id, movie in movies_data.items()]
+            posters_urls = [(movie.id, movie.image) for movie in movies]
             downloader = ImageDownloader(
                 numbered_urls=posters_urls,
                 download_dir_creator=file_m.poster_dir,
-                prefix='poster',
+                filename='poster',
                 extension='webp',
                 pbar_desc="Скачивание постеров",
             )
             downloader.run()
 
-            stills_urls = []
-            for movie_id, movie in movies_data.items():
-                stills_urls.extend([(movie_id, still_url) for still_url in movie['stills']])
-
+            stills_urls = [(movie.id, still_url) for movie in movies for still_url in movie.stills]
             downloader = ImageDownloader(
                 numbered_urls=stills_urls,
                 download_dir_creator=file_m.stills_dir,
-                prefix='still',
+                filename='still',
+                need_number=True,
                 extension='jpg',
                 pbar_desc="Скачивание кадров",
-                need_number=True,
             )
             downloader.run()
         else:
             print("Скачивание изображений по фильмам не требуется...")
 
         if not file_m.persons_images_dir.exists():
-            persons_data = file_m.persons_data_json.read()
+            persons = file_m.persons_data_json.read(Person)
 
-            photos_urls = []
-            for person in persons_data:
-                photo_url = person.get('image')
-                if photo_url:
-                    photos_urls.append((person['person_id'], photo_url))
-
+            photos_urls = [(person.id, person.image) for person in persons if person.image]
             downloader = ImageDownloader(
                 numbered_urls=photos_urls,
                 download_dir_creator=file_m.photo_dir,
-                prefix='photo',
+                filename='photo',
                 extension='webp',
-                pbar_desc="Скачивание фотографий персон", )
-
+                pbar_desc="Скачивание фотографий персон",
+            )
             downloader.run()
         else:
             print("Скачивание изображений по персонам не требуется...")

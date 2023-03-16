@@ -1,8 +1,8 @@
 import time
 from contextlib import suppress
 from functools import wraps
-from multiprocessing import Process, Manager
-from typing import Collection, Optional, Tuple
+from multiprocessing import Process, Manager, Value
+from typing import Collection, Optional
 
 from prettytable import PrettyTable
 from tqdm import tqdm
@@ -64,16 +64,11 @@ def _update_pbar(q, total, desc):
 def parallel_run(
         target: callable,
         tasks: Collection,
-        result_type: Optional[type] = None,
-        temp_storage: bool = False,
-        pbar_params: Optional[Tuple[str, int]] = None,
+        counter: bool = False,
+        pbar_desc: Optional[str] = None,
 ):
-    run_result = None
-    if result_type:
-        run_result = result_type()
-
+    run_result = []
     proc_num = min(config.proc_num, len(tasks))
-
     args = []
 
     with Manager() as manager:
@@ -82,23 +77,18 @@ def parallel_run(
             task_queue.put(task)
         args.append(task_queue)
 
-        if temp_storage:
-            temp_storage = manager.Queue()
-            args.append(temp_storage)
+        result = manager.list()
+        args.append(result)
 
-        if result_type:
-            if result_type is list:
-                shared_data = manager.list()
-            elif result_type is dict:
-                shared_data = manager.dict()
-            args.append(shared_data)
+        if counter:
+            counter = Value('i', 0)
+            args.append(counter)
 
         args.append(config.presets)
 
-        if pbar_params:
-            desc, total = pbar_params
+        if pbar_desc:
             pbar_q = manager.Queue()
-            pbar_proc = Process(target=_update_pbar, args=(pbar_q, total, desc), daemon=True)
+            pbar_proc = Process(target=_update_pbar, args=(pbar_q, len(tasks), pbar_desc), daemon=True)
             pbar_proc.start()
             args.append(pbar_q)
 
@@ -111,12 +101,9 @@ def parallel_run(
         for proc in processes:
             proc.join()
 
-        if result_type is list:
-            run_result.extend(shared_data)
-        elif result_type is dict:
-            run_result.update(shared_data)
+        run_result.extend(result)
 
-        if pbar_params:
+        if pbar_desc:
             pbar_q.put(None)
 
     return run_result

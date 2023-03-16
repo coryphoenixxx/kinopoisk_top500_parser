@@ -5,18 +5,20 @@ import bs4
 from bs4 import BeautifulSoup
 
 from config import config
-from utils.url_manager import url_m
+from models import Movie, Person
 
 
 class BaseParser:
     def __init__(self, page):
         self._soup = BeautifulSoup(page, "lxml")
+        self.model = None
 
-    def as_dict(self):
-        d = {}
+    @property
+    def data(self):
+        d = self.model()
         for k, v in self.__class__.__dict__.items():
             if type(v) is property:
-                d[k] = getattr(self, k)
+                setattr(d, k, getattr(self, k))
         return d
 
 
@@ -29,14 +31,19 @@ class MovieListParser(BaseParser):
     def urns(self):
         return [elem.get('href') for elem in self._soup.select('.base-movie-main-info_link__YwtP1')]
 
-    def as_dict(self):
+    @property
+    def data(self):
         d = {}
         for pos, urn in zip(self.positions, self.urns):
-            d[int(pos)] = url_m.base + urn
+            d[int(pos)] = config.base_url + urn
         return d
 
 
 class MovieParser(BaseParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.model = Movie
+
     @property
     def rus_title(self):
         rus_title = self._soup.select('.styles_title__65Zwx.styles_root__l9kHe.styles_root__5sqsd')[0].text
@@ -144,7 +151,7 @@ class MovieParser(BaseParser):
 
     @staticmethod
     def _extract_person_urls(tag: bs4.Tag):
-        return [url_m.person_number_to_url(n)
+        return [config.base_url + f'/name/{n}/'
                 for n in re.findall(r'name/(\d+)/', str(tag))]
 
 
@@ -156,8 +163,16 @@ class MovieStillsParser(BaseParser):
             for elem in self._soup.select('.styles_download__kQ848')[:config.still_num]
         ]
 
+    @property
+    def data(self):
+        raise NotImplementedError
+
 
 class PersonParser(BaseParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.model = Person
+
     @property
     def rus_name(self):
         return self._soup.select('.styles_primaryName__2Zu1T')[0].text

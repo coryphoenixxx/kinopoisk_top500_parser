@@ -22,8 +22,8 @@ if __name__ == '__main__':
         "(файл data/persons_data.json)"
     )
     while True:
-        user_input = input("Ввод команды 'exit' — выход, 'show' — показать снова:\n")
-        if user_input == 'exit':
+        user_input = input("Ввод команды 'continue' — создать фикстуры, 'show' — показать страны снова:\n")
+        if user_input == 'continue':
             break
         elif user_input == 'show':
             show_persons_countries()

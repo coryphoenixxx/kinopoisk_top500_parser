@@ -1,50 +1,37 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 
-@dataclass
+@dataclass(slots=True)
 class Movie:
-    kp_url: str
-    rus_title: str
-    orig_title: Optional[str]
-    year: int
-    tagline: Optional[str]
-    duration: int
-    countries: list[int]
-    genres: list[int]
-    directors: list[int]
-    writers: list[int]
-    actors: list[int]
-    synopsys: str
-    image: str
-    kp_rating: float
-    kp_count: int
-    imdb_rating: Optional[float]
-    imdb_count: Optional[int]
+    id: int = None
+    kp_url: str = None
+    rus_title: str = None
+    orig_title: Optional[str] = None
+    year: int = None
+    tagline: Optional[str] = None
+    duration: int = None
+    synopsys: str = None
+    countries: list = field(default_factory=lambda: [])
+    genres: list = field(default_factory=lambda: [])
+    directors: list = field(default_factory=lambda: [])
+    writers: list = field(default_factory=lambda: [])
+    actors: list = field(default_factory=lambda: [])
+    image: str = None
+    stills: list = field(default_factory=lambda: [])
+    kp_rating: float = None
+    kp_count: int = None
+    imdb_rating: Optional[float] = None
+    imdb_count: Optional[int] = None
 
 
-@dataclass
+@dataclass(slots=True)
 class Person:
-    kp_url: str
-    rus_name: str
-    orig_name: Optional[str]
-    birth_date: Optional[str]
-    death_date: Optional[str]
-    image: Optional[str]
-    motherland: Optional[int]
-
-
-@dataclass
-class Genre:
-    name: str
-
-
-@dataclass
-class Country:
-    name: str
-
-
-@dataclass
-class MovieStill:
-    movie: int
-    image: str
+    id: int = None
+    kp_url: str = None
+    rus_name: str = None
+    orig_name: Optional[str] = None
+    birth_date: Optional[str] = None
+    death_date: Optional[str] = None
+    image: Optional[str] = None
+    motherland: Optional[int] = None
