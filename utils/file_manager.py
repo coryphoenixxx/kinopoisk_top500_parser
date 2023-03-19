@@ -4,9 +4,11 @@ from shutil import rmtree
 
 
 class StorageUnit:
-    def __init__(self, path, pdir='data'):
-        self.root_dir = Path(__file__).resolve().parent.parent
-        self.path = self.root_dir / pdir / path
+    """Абстрактный класс элемента файловой системы"""
+
+    def __init__(self, path: str, pdir: str = 'data'):
+        self.root_dir = Path(__file__).resolve().parent.parent  # папка проекта
+        self.path = self.root_dir / pdir / path  # полный путь до элемента
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def exists(self):
@@ -18,6 +20,10 @@ class StorageUnit:
 
 class JsonFile(StorageUnit):
     def read(self, model=None):
+        """
+        :param model: Датакласс модели
+        :return: Словарь или датакласс с данными из файла
+        """
         with self.path.open(mode='r', encoding='utf-8') as f:
             data = json.load(f)
 
@@ -40,9 +46,9 @@ class Dir(StorageUnit):
         return self.path
 
 
-class FileManager:
+class Storage:
     @staticmethod
-    def drivers_dir(i):
+    def driver_dir(i):
         return Dir(f'drivers/driver_{i}')
 
     @property
@@ -56,10 +62,6 @@ class FileManager:
     @staticmethod
     def user_data_dir(i):
         return Dir(f'chrome_profiles/user_data_{i}')
-
-    @property
-    def movies_urls_json(self):
-        return JsonFile('movies_urls.json')
 
     @property
     def correct_countries_json(self):
@@ -98,4 +100,4 @@ class FileManager:
         return JsonFile('fixtures.json')
 
 
-file_m = FileManager()
+storage = Storage()

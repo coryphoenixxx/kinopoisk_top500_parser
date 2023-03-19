@@ -3,7 +3,7 @@ from dataclasses import dataclass, asdict, field
 from itertools import count
 
 from models import Movie, Person
-from utils.file_manager import file_m
+from utils.file_manager import storage
 
 
 @dataclass
@@ -42,29 +42,31 @@ class MovieStillFixture:
 
 
 class FixturesCollector:
+    """Класс собирает все фикстуры в список для записи в итоговый файл"""
+
     def __init__(self):
         self.data = []
         self.stills_pk_counter = 0
 
-    def add_movie(self, movie_dict):
-        movie_dict.pop('stills')
+    def add_movie(self, movie: dict):
+        movie.pop('stills')
         self.data.append(
             asdict(MovieFixture(
-                pk=movie_dict.pop('id'),
-                fields=movie_dict
+                pk=movie.pop('id'),
+                fields=movie
             ))
         )
 
-    def add_person(self, person_dict):
+    def add_person(self, person: dict):
         self.data.append(
             asdict(PersonFixture(
-                pk=person_dict.pop('id'),
-                fields=person_dict
+                pk=person.pop('id'),
+                fields=person
             ))
         )
 
-    def add_countries(self, items):
-        for name, pk in items:
+    def add_countries(self, d: dict):
+        for name, pk in d.items():
             self.data.append(
                 asdict(CountryFixture(
                     pk=pk,
@@ -72,8 +74,8 @@ class FixturesCollector:
                 ))
             )
 
-    def add_genres(self, items):
-        for name, pk in items:
+    def add_genres(self, d: dict):
+        for name, pk in d.items():
             self.data.append(
                 asdict(GenreFixture(
                     pk=pk,
@@ -81,7 +83,7 @@ class FixturesCollector:
                 ))
             )
 
-    def add_stills(self, movie_id, stills: list):
+    def add_stills(self, movie_id: int, stills: list):
         for i in range(len(stills)):
             self.stills_pk_counter += 1
             self.data.append(
@@ -96,9 +98,11 @@ class FixturesCollector:
 
 
 class FixturesCreator:
+    """Класс для преобразования спарсенных данных в фикстуры Django"""
+
     def __init__(self):
-        self._movies = file_m.movies_data_json.read(Movie)
-        self._persons = file_m.persons_data_json.read(Person)
+        self._movies = storage.movies_data_json.read(Movie)
+        self._persons = storage.persons_data_json.read(Person)
         self._fixtures = FixturesCollector()
 
         countries_counter, genres_counter = count(start=1), count(start=1)
@@ -141,5 +145,5 @@ class FixturesCreator:
 
             self._fixtures.add_movie(asdict(movie))
 
-        self._fixtures.add_countries(self._country_pk_dict.items())
-        self._fixtures.add_genres(self._genre_pk_dict.items())
+        self._fixtures.add_countries(self._country_pk_dict)
+        self._fixtures.add_genres(self._genre_pk_dict)

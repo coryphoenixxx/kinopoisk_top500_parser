@@ -2,3 +2,4 @@
 /drivers/
 /data/
 .env
+.idea

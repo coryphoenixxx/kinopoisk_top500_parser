@@ -1,7 +1,7 @@
 from fixtures import FixturesCreator
 from scraper import scraper
-from utils.file_manager import file_m
-from utils.utils import timeit, show_persons_countries
+from utils.file_manager import storage
+from utils.utils import timeit, show_countries
 
 
 @timeit
@@ -15,7 +15,7 @@ if __name__ == '__main__':
     scraper.solve_captchas()
     scrape()
 
-    show_persons_countries()
+    show_countries()
     print(
         "______________________________________________________________\n"
         "Ручное исправление некорректных данных по странам у персон... \n"
@@ -26,6 +26,6 @@ if __name__ == '__main__':
         if user_input == 'continue':
             break
         elif user_input == 'show':
-            show_persons_countries()
+            show_countries()
 
-    file_m.fixtures_json.write(FixturesCreator().run())
+    storage.fixtures_json.write(FixturesCreator().run())

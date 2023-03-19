@@ -9,9 +9,11 @@ from models import Movie, Person
 
 
 class BaseParser:
-    def __init__(self, page):
+    """Абстрактный класс парсера"""
+
+    def __init__(self, page: str):
         self._soup = BeautifulSoup(page, "lxml")
-        self.model = None
+        self.model = None  # Датакласс модели
 
     @property
     def data(self):
@@ -23,23 +25,26 @@ class BaseParser:
 
 
 class MovieListParser(BaseParser):
+    """Парсер страниц-списков с фильмами"""
+
     @property
     def positions(self):
+        """Позиции фильмов в топ500"""
         return [elem.text for elem in self._soup.select('.styles_position__TDe4E')]
 
     @property
-    def urns(self):
-        return [elem.get('href') for elem in self._soup.select('.base-movie-main-info_link__YwtP1')]
+    def urls(self):
+        """"""
+        return [config.base_url + elem.get('href') for elem in self._soup.select('.base-movie-main-info_link__YwtP1')]
 
     @property
     def data(self):
-        d = {}
-        for pos, urn in zip(self.positions, self.urns):
-            d[int(pos)] = config.base_url + urn
-        return d
+        return {int(pos): url for pos, url in zip(self.positions, self.urls)}
 
 
 class MovieParser(BaseParser):
+    """Парсер главной страницы фильма"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.model = Movie
@@ -98,6 +103,7 @@ class MovieParser(BaseParser):
 
     @property
     def image(self):
+        """Постер"""
         return 'https:' + self._soup.select('.film-poster')[0].get('src')
 
     @property
@@ -156,6 +162,8 @@ class MovieParser(BaseParser):
 
 
 class MovieStillsParser(BaseParser):
+    """Парсер страниц с кадрами и скриншотами"""
+
     @property
     def images_urls(self):
         return [
@@ -169,6 +177,8 @@ class MovieStillsParser(BaseParser):
 
 
 class PersonParser(BaseParser):
+    """Парсер главной страницы персоны"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.model = Person
@@ -226,6 +236,7 @@ class PersonParser(BaseParser):
 
     @property
     def image(self):
+        """Фото персоны"""
         if self._soup.select('.styles_root__DZigd')[0].get('srcset'):
             return 'https:' + self._soup.select('.styles_root__DZigd')[0].get('src')
         return None
@@ -245,7 +256,7 @@ class PersonParser(BaseParser):
         return d
 
     @staticmethod
-    def _YYYY_MM_DD_format(date_obj):
+    def _YYYY_MM_DD_format(date_obj: list[str]):
         months = [
             'января',
             'февраля',

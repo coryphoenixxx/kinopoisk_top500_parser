@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 
-@dataclass(slots=True)
+@dataclass
 class Movie:
     id: int = None
     kp_url: str = None
@@ -25,7 +25,7 @@ class Movie:
     imdb_count: Optional[int] = None
 
 
-@dataclass(slots=True)
+@dataclass
 class Person:
     id: int = None
     kp_url: str = None

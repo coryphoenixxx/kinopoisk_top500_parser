@@ -1,14 +1,16 @@
 import time
 from contextlib import suppress
 from functools import wraps
-from multiprocessing import Process, Manager, Value
-from typing import Collection, Optional
+from itertools import zip_longest
+from multiprocessing import Process, Manager, Value, Queue
+from typing import Collection
 
 from prettytable import PrettyTable
 from tqdm import tqdm
 
 from config import config
-from utils.file_manager import file_m
+from models import Person
+from utils.file_manager import storage
 
 
 def timeit(func):
@@ -24,34 +26,36 @@ def timeit(func):
     return timeit_wrapper
 
 
-def _chunked(lst, n):
+def _chunkize(lst, n):
     for i in range(0, len(lst), n):
-        x = lst[i:i + n]
-        x.extend([''] * (n - len(x)))
-        yield x
+        sub_lst = lst[i:i + n]
+        yield sub_lst
 
 
-def show_persons_countries():
-    if file_m.persons_data_json.exists():
-        persons_data = file_m.persons_data_json.read()
+def show_countries():
+    """Вывод стран для дальнейшей ручной доработки"""
 
-        countries = set()
-        for data in persons_data:
-            motherland = data['motherland']
-            if motherland:
-                countries.add(motherland)
+    if storage.persons_data_json.exists():
+        persons = storage.persons_data_json.read(Person)
+
+        countries = set(person.motherland for person in persons)
+        countries.remove(None)
 
         table = PrettyTable()
-        for chunk in _chunked(sorted(countries), n=6):
+        table.header = False
+        table.title = 'СТРАНЫ'
+
+        countries_chunks = map(list, zip_longest(*_chunkize(sorted(countries), n=20), fillvalue=''))
+        for chunk in countries_chunks:
             table.add_row(chunk)
-
         print(table)
-
     else:
         print("Отсутствует файл data/persons_data.json!")
 
 
-def _update_pbar(q, total, desc):
+def _update_pbar(q: Queue, total: int, desc: str):
+    """Обновление полоски прогресс-бара"""
+
     pbar = tqdm(desc=desc, total=total)
     with suppress(EOFError):
         while True:
@@ -64,34 +68,47 @@ def _update_pbar(q, total, desc):
 def parallel_run(
         target: callable,
         tasks: Collection,
+        pbar_desc: str,
         counter: bool = False,
-        pbar_desc: Optional[str] = None,
-):
-    run_result = []
+) -> list:
+    """
+    :param target: Объект функции для параллельного выполнения
+    :param tasks: Список задач для target
+    :param counter: Нужен ли расшаренный между процессами счетчик
+    :param pbar_desc: Описание прогресс-бара
+    :return: Список с результатами работы всех процессов
+    """
+
     proc_num = min(config.proc_num, len(tasks))
-    args = []
 
     with Manager() as manager:
-        task_queue = manager.Queue()
+        task_q = manager.Queue()
         for task in tasks:
-            task_queue.put(task)
-        args.append(task_queue)
+            task_q.put(task)
 
         result = manager.list()
-        args.append(result)
 
+        # Создать демон прогресс-бара
+        pbar_q = manager.Queue()
+        pbar_proc = Process(
+            target=_update_pbar,
+            args=(pbar_q, len(tasks), pbar_desc),
+            daemon=True,
+        )
+        pbar_proc.start()
+
+        # порядок важен!
+        args = []
+        args.extend([
+            task_q,
+            result,
+            config.presets,
+            pbar_q,
+        ])
         if counter:
-            counter = Value('i', 0)
-            args.append(counter)
+            args.append(Value('i', 0))
 
-        args.append(config.presets)
-
-        if pbar_desc:
-            pbar_q = manager.Queue()
-            pbar_proc = Process(target=_update_pbar, args=(pbar_q, len(tasks), pbar_desc), daemon=True)
-            pbar_proc.start()
-            args.append(pbar_q)
-
+        # Создать процессы-воркеры вебдрайверов
         processes = []
         for _ in range(proc_num):
             proc = Process(target=target, args=args)
@@ -101,9 +118,6 @@ def parallel_run(
         for proc in processes:
             proc.join()
 
-        run_result.extend(result)
+        pbar_q.put(None)
 
-        if pbar_desc:
-            pbar_q.put(None)
-
-    return run_result
+        return list(result)

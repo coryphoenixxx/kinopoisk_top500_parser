@@ -8,9 +8,24 @@ from tqdm import tqdm
 
 
 class ImageDownloader:
-    LIMIT = 32
+    """Класс для асинхронной закачки изображений"""
 
-    def __init__(self, numbered_urls, download_dir_creator, filename, extension, pbar_desc, need_number=False):
+    LIMIT = 32  # Количество одновременных соединений, дабы предотвратить DDOS
+
+    def __init__(
+            self,
+            numbered_urls: list[tuple[int, str]],
+            download_dir_creator: callable,
+            filename: str,
+            extension: str,
+            pbar_desc: str,
+            need_number: bool = False):
+        """
+        :param numbered_urls: Список пронумерованных ссылок на изображения
+        :param download_dir_creator: Объект функции для создания папки, куда скачивать изображения
+        :param need_number: Нужно ли дополнительное нумерование в имени файла
+        """
+
         self._numbered_urls = numbered_urls
         self._download_dir_creator = download_dir_creator
         self._filename = filename
@@ -18,9 +33,16 @@ class ImageDownloader:
         self._need_number = need_number
         self._pbar_desc = pbar_desc
         self._image_number_counter = defaultdict(int)
-        self._get_counter = 0
+        self._download_counter = 0
 
-    async def _async_download_image(self, sem, session, id_url_tuple):
+    async def _async_download_image(
+            self,
+            sem: Semaphore,
+            session: aiohttp.ClientSession,
+            id_url_tuple: tuple[int, str]
+    ):
+        """Скачивание одного изображения"""
+
         image_id, image_url = id_url_tuple
 
         download_dir = self._download_dir_creator(image_id).mkdir()
@@ -47,8 +69,8 @@ class ImageDownloader:
                 print(f'{image_id} ({image_url}) — не скачано!')
 
         self._pbar.update(1)
-        self._get_counter += 1
-        if self._get_counter % 10:
+        self._download_counter += 1
+        if self._download_counter % 10:
             await asyncio.sleep(1)
 
     async def _async_download_images(self):
