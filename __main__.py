@@ -12,7 +12,6 @@ def scrape():
 
 
 if __name__ == '__main__':
-    scraper.solve_captchas()
     scrape()
 
     show_countries()

@@ -14,30 +14,6 @@ from utils.utils import parallel_run
 class Scraper:
     """Класс скрапинга инфомации по фильмам"""
 
-    def solve_captchas(self):
-        """
-        При первом старте для каждого профиля спровоцировать появление капчи,
-        чтобы в дальнейшем значительно снизить частоту ее появления.
-        Факт решенной капчи запомнится в сессии профиля chrome.
-        """
-
-        file = storage.solved_captchas_json
-        if file.exists():
-            data = file.read()
-            if len(data) >= config.proc_num and all(data):
-                print("Решение капчи не требуется...")
-                return
-
-        storage.chrome_profiles_dir.delete()
-
-        result = parallel_run(
-            target=self._solve_capthas_process_job,
-            tasks=[config.base_url] * config.proc_num,
-            pbar_desc="Решение капчи",
-        )
-
-        file.write(result)
-
     @staticmethod
     def _solve_capthas_process_job(kp_urls: Queue, result: ListProxy, presets: Queue, pbar: Queue):
         """
