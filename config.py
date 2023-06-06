@@ -15,6 +15,7 @@ class Config:
         proc_num = os.getenv('PROCESS_NUM')
         self.proc_num = int(proc_num) if proc_num else os.cpu_count()
         self.movie_list_num = int(os.getenv('MOVIES_LIST_NUM'))
+        self.monitor = sorted(screeninfo.get_monitors(), key=lambda m: m.x)[int(os.getenv('MONITOR'))]
         self.movie_num = self.movie_list_num * 50
         self.still_num = int(os.getenv('STILLS_NUM'))
         self.scrape_limit_count = int(os.getenv('SCRAPE_LIMIT_COUNT'))
@@ -24,9 +25,6 @@ class Config:
             f"{self.base_url}/lists/movies/top500/?page={i + 1}"
             for i in range(self.movie_list_num)
         ]
-
-        monitor = screeninfo.get_monitors()[0]
-        self.m_width, self.m_height = int(monitor.width), int(monitor.height) - 30
 
     @property
     def presets(self):
@@ -51,23 +49,27 @@ class Config:
     def _windows_rects(self):
         """Расчет позиции и размеров окна вебдрайвера под каждый процесс"""
 
-        windows_rects = {
-            2: self._calc_windows_rects(rows=1, columns=2),
-            4: self._calc_windows_rects(rows=2, columns=2),
-            6: self._calc_windows_rects(rows=2, columns=3),
-            8: self._calc_windows_rects(rows=2, columns=4),
+        rows_columns = {
+            2: (1, 2),
+            4: (2, 2),
+            6: (2, 3),
+            8: (2, 4),
+            16: (4, 4)
         }
 
-        result = windows_rects.get(self.proc_num)
-        if result:
-            return result
-
+        if self.proc_num in rows_columns.keys():
+            return self._calc_windows_rects(*rows_columns[self.proc_num])
         return (None,) * self.proc_num
 
     def _calc_windows_rects(self, rows, columns):
-        w_w, w_h = self.m_width // columns, self.m_height // rows
+        window_width, window_height = self.monitor.width // columns, self.monitor.height // rows
         return [
-            (w_w * i, w_h * j, w_w, w_h)
+            (
+                window_width * i + self.monitor.x,  # start pos_x
+                window_height * j + self.monitor.y,  # start pos_y
+                window_width,
+                window_height
+            )
             for i in range(columns)
             for j in range(rows)
         ]
